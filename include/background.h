@@ -103,6 +103,7 @@ struct background
   double Omega0_lambda;    /**< \f$ \Omega_{0_\Lambda} \f$: cosmological constant */
   double Omega0_fld;       /**< \f$ \Omega_{0 de} \f$: fluid */
   double Omega0_scf;       /**< \f$ \Omega_{0 scf} \f$: scalar field */
+  double Omega0_pht;       /**< \f$ \Omega_{0 pht} \f$: scalar field */
   short use_ppf; /**< flag switching on PPF perturbation equations instead of true fluid equations for perturbations. It could have been defined inside
                     perturbation structure, but we leave it here in such way to have all fld parameters grouped. */
   double c_gamma_over_c_fld; /**< ppf parameter defined in eq. (16) of 0808.3125 [astro-ph] */
@@ -120,6 +121,9 @@ struct background
   double phi_ini_scf;      /**< \f$ \phi(t_0) \f$: scalar field initial value */
   double phi_prime_ini_scf;/**< \f$ d\phi(t_0)/d\tau \f$: scalar field initial derivative wrt conformal time */
   int scf_parameters_size; /**< size of scf_parameters */
+  double pht_delta;
+  double sigma_ini_pht;    /**< \f$ \sigma(t_0) \f$: scalar field initial value */
+  double sigma_prime_ini_pht;   /**< \f$ d\sigma(t_0)/d\tau \f$: scalar field initial derivative wrt conformal time */
   double varconst_alpha; /**< finestructure constant for varying fundamental constants */
   double varconst_me; /**< electron mass for varying fundamental constants */
   enum varconst_dependence varconst_dep; /**< dependence of the varying fundamental constants as a function of time */
@@ -182,7 +186,13 @@ struct background
   int index_bg_ddV_scf;       /**< scalar field potential second derivative V'' */
   int index_bg_rho_scf;       /**< scalar field energy density */
   int index_bg_p_scf;         /**< scalar field pressure */
-  int index_bg_p_prime_scf;         /**< scalar field pressure */
+  int index_bg_p_prime_scf;   /**< scalar field pressure derivative wrt conformal time*/
+
+  int index_bg_sigma_pht;       /**< phantom field value */
+  int index_bg_sigma_prime_pht; /**< phantom field derivative wrt conformal time */
+  int index_bg_rho_pht;         /**< phantom field energy density */
+  int index_bg_p_pht;           /**< phantom field pressure */
+  int index_bg_p_prime_pht;     /**< phantom field pressure derivative wrt conformal time*/
 
   int index_bg_rho_ncdm1;     /**< density of first ncdm species (others contiguous) */
   int index_bg_p_ncdm1;       /**< pressure of first ncdm species (others contiguous) */
@@ -259,6 +269,8 @@ struct background
   int index_bi_rho_fld; /**< {B} fluid density */
   int index_bi_phi_scf;       /**< {B} scalar field value */
   int index_bi_phi_prime_scf; /**< {B} scalar field derivative wrt conformal time */
+  int index_bi_sigma_pht;     /**< {B} phantom field value */
+  int index_bi_sigma_prime_pht; /**< {B} phantom field derivative wrt conformal time*/
 
   int index_bi_time;    /**< {C} proper (cosmological) time in Mpc */
   int index_bi_rs;      /**< {C} sound horizon */
@@ -286,6 +298,7 @@ struct background
   short has_dcdm;      /**< presence of decaying cold dark matter? */
   short has_dr;        /**< presence of relativistic decay radiation? */
   short has_scf;       /**< presence of a scalar field? */
+  short has_pht;       /**< presence of a phantom field? */
   short has_ncdm;      /**< presence of non-cold dark matter? */
   short has_lambda;    /**< presence of cosmological constant? */
   short has_fld;       /**< presence of fluid with constant w and cs2? */
