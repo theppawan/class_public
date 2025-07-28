@@ -397,7 +397,7 @@ int background_functions(
   /* fluid's time-dependent equation of state parameter */
   double w_fld, dw_over_da, integral_fld;
   /* scalar field quantities */
-  double phi, phi_prime;
+  double phi, phi_prime, sigma, sigma_prime;
   /* Since we only know a_prime_over_a after we have rho_tot,
      it is not possible to simply sum up p_tot_prime directly.
      Instead we sum up dp_dloga = p_prime/a_prime_over_a. The formula is
@@ -487,6 +487,20 @@ int background_functions(
     rho_r += 3.*pvecback[pba->index_bg_p_scf]; //field pressure contributes radiation
     rho_m += pvecback[pba->index_bg_rho_scf] - 3.* pvecback[pba->index_bg_p_scf]; //the rest contributes matter
     //printf(" a= %e, Omega_scf = %f, \n ",a, pvecback[pba->index_bg_rho_scf]/rho_tot );
+  }
+
+  if (pba->has_pht == _TRUE_) {
+    sigma = pvecback_B[pba->index_bi_sigma_pht];
+    sigma_prime = pvecback_B[pba->index_bi_sigma_prime_pht];
+    pvecback[pba->index_bg_sigma_pht] = sigma;                // value of the phantom field sigma
+    pvecback[pba->index_bg_sigma_prime_pht] = sigma_prime;    // value of the phantom field sigma derivative wrt conformal time
+    pvecback[pba->index_bg_rho_pht] = -(sigma_prime*sigma_prime/(2*a*a))/3.;  // energy of the phantom field.
+    pvecback[pba->index_bg_p_pht] = -(sigma_prime*sigma_prime/(2*a*a))/3.;    // pressure of the phantom field.
+    rho_tot += pvecback[pba->index_bg_rho_pht];
+    p_tot += pvecback[pba->index_bg_p_pht];
+    dp_dloga += 0.0;    // this depends on a_prime_over_a, so we cannot add it now!
+    rho_r += 3.*pvecback[pba->index_bg_p_pht];    // field pressure contributes radiation
+    rho_m += pvecback[pba->index_bg_rho_pht] - 3.*pvecback[pba->index_bg_p_pht];  // the rest contributes matter
   }
 
   /* ncdm */
@@ -581,7 +595,7 @@ int background_functions(
   /** - compute derivative of H with respect to conformal time */
   pvecback[pba->index_bg_H_prime] = - (3./2.) * (rho_tot + p_tot) * a + pba->K/a;
 
-  /* Total energy density*/
+  /* Total energy density */
   pvecback[pba->index_bg_rho_tot] = rho_tot;
 
   /* Total pressure */
@@ -594,6 +608,11 @@ int background_functions(
     pvecback[pba->index_bg_p_prime_scf] = pvecback[pba->index_bg_phi_prime_scf]*
       (-pvecback[pba->index_bg_phi_prime_scf]*pvecback[pba->index_bg_H]/a-2./3.*pvecback[pba->index_bg_dV_scf]);
     pvecback[pba->index_bg_p_tot_prime] += pvecback[pba->index_bg_p_prime_scf];
+  }
+  if (pba->has_pht == _TRUE_) {
+    pvecback[pba->index_bg_p_prime_pht] = pvecback[pba->index_bg_sigma_prime_pht]*
+      (pvecback[pba->index_bg_sigma_prime_pht]*pvecback[pba->index_bg_H]/a - 1./3.*pba->pht_delta*rho_m);
+    pvecback[pba->index_bg_p_tot_prime] += pvecback[pba->index_bg_p_prime_pht];
   }
 
   /** - compute critical density */
@@ -990,6 +1009,7 @@ int background_indices(
   pba->has_dcdm = _FALSE_;
   pba->has_dr = _FALSE_;
   pba->has_scf = _FALSE_;
+  pba->has_pht = _FALSE_;
   pba->has_lambda = _FALSE_;
   pba->has_fld = _FALSE_;
   pba->has_ur = _FALSE_;
@@ -1014,6 +1034,9 @@ int background_indices(
 
   if (pba->Omega0_scf != 0.)
     pba->has_scf = _TRUE_;
+
+  if (pba->Omega0_pht != 0.)
+    pba->has_pht = _TRUE_;
 
   if (pba->Omega0_lambda != 0.)
     pba->has_lambda = _TRUE_;
@@ -1081,6 +1104,13 @@ int background_indices(
   class_define_index(pba->index_bg_rho_scf,pba->has_scf,index_bg,1);
   class_define_index(pba->index_bg_p_scf,pba->has_scf,index_bg,1);
   class_define_index(pba->index_bg_p_prime_scf,pba->has_scf,index_bg,1);
+
+  /* - indices for phantom field */
+  class_define_index(pba->index_bg_sigma_pht,pba->has_pht,index_bg,1);
+  class_define_index(pba->index_bg_sigma_prime_pht,pba->has_pht,index_bg,1);
+  class_define_index(pba->index_bg_rho_pht,pba->has_pht,index_bg,1);
+  class_define_index(pba->index_bg_p_pht,pba->has_pht,index_bg,1);
+  class_define_index(pba->index_bg_p_prime_pht,pba->has_pht,index_bg,1);
 
   /* - index for Lambda */
   class_define_index(pba->index_bg_rho_lambda,pba->has_lambda,index_bg,1);
@@ -1177,6 +1207,10 @@ int background_indices(
   /* -> scalar field and its derivative wrt conformal time (Zuma) */
   class_define_index(pba->index_bi_phi_scf,pba->has_scf,index_bi,1);
   class_define_index(pba->index_bi_phi_prime_scf,pba->has_scf,index_bi,1);
+
+  /* -> phantom field and its derivative wrt conformal time */
+  class_define_index(pba->index_bi_sigma_pht,pba->has_pht,index_bi,1);
+  class_define_index(pba->index_bi_sigma_prime_pht,pba->has_pht,index_bi,1);
 
   /* End of {B} variables */
   pba->bi_B_size = index_bi;
@@ -2300,6 +2334,10 @@ int background_initial_conditions(
                pvecback_integration[pba->index_bi_phi_scf],
                pvecback_integration[pba->index_bi_phi_scf]);
   }
+  if (pba->has_pht == _TRUE_) {
+    pvecback_integration[pba->index_bi_sigma_pht] = pba->sigma_ini_pht;
+    pvecback_integration[pba->index_bi_sigma_prime_pht] = pba->sigma_prime_ini_pht;
+  }
 
   /* Infer pvecback from pvecback_integration */
   class_call(background_functions(pba, a, pvecback_integration, normal_info, pvecback),
@@ -2476,6 +2514,12 @@ int background_output_titles(
   class_store_columntitle(titles,"V'_scf",pba->has_scf);
   class_store_columntitle(titles,"V''_scf",pba->has_scf);
 
+  class_store_columntitle(titles,"(.)rho_pht",pba->has_pht);
+  class_store_columntitle(titles,"(.)p_pht",pba->has_pht);
+  class_store_columntitle(titles,"(.)p_prime_pht",pba->has_pht);
+  class_store_columntitle(titles,"sigma_pht",pba->has_pht);
+  class_store_columntitle(titles,"sigma'_pht",pba->has_pht);
+
   class_store_columntitle(titles,"(.)rho_tot",_TRUE_);
   class_store_columntitle(titles,"(.)p_tot",_TRUE_);
   class_store_columntitle(titles,"(.)p_tot_prime",_TRUE_);
@@ -2548,6 +2592,12 @@ int background_output_data(
     class_store_double(dataptr,pvecback[pba->index_bg_V_scf],pba->has_scf,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_dV_scf],pba->has_scf,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_ddV_scf],pba->has_scf,storeidx);
+
+    class_store_double(dataptr,pvecback[pba->index_bg_rho_pht],pba->has_pht,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_p_pht],pba->has_pht,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_p_prime_pht],pba->has_pht,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_sigma_pht],pba->has_pht,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_sigma_prime_pht],pba->has_pht,storeidx);
 
     class_store_double(dataptr,pvecback[pba->index_bg_rho_tot],_TRUE_,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_p_tot],_TRUE_,storeidx);
@@ -2668,6 +2718,14 @@ int background_derivs(
         written as \f$ d\phi/dlna = phi' / (aH) \f$ and \f$ d\phi'/dlna = -2*phi' - (a/H) dV \f$ */
     dy[pba->index_bi_phi_scf] = y[pba->index_bi_phi_prime_scf]/a/H;
     dy[pba->index_bi_phi_prime_scf] = - 2*y[pba->index_bi_phi_prime_scf] - a*dV_scf(pba,y[pba->index_bi_phi_scf])/H ;
+  }
+
+  if ((pba->has_pht == _TRUE_) && (pba->has_scf == _TRUE_)) {
+    dy[pba->index_bi_sigma_pht] = y[pba->index_bi_sigma_prime_pht]/a/H;
+    dy[pba->index_bi_sigma_prime_pht] = - 2*y[pba->index_bi_sigma_prime_pht] + a/H * pba->pht_delta *
+    (1 - 1./2*y[pba->index_bi_phi_prime_scf]*y[pba->index_bi_phi_prime_scf] - V_scf(pba,y[pba->index_bi_phi_scf]) 
+       + 1./2*y[pba->index_bi_sigma_prime_pht]*y[pba->index_bi_sigma_prime_pht]
+       - pvecback[pba->index_bg_rho_g] - pvecback[pba->index_bg_rho_ur]);
   }
 
   return _SUCCESS_;
@@ -2847,7 +2905,7 @@ int background_output_budget(
       budget_radiation+=pba->Omega0_idr;
     }
 
-    if ((pba->has_lambda == _TRUE_) || (pba->has_fld == _TRUE_) || (pba->has_scf == _TRUE_) || (pba->has_curvature == _TRUE_)) {
+    if ((pba->has_lambda == _TRUE_) || (pba->has_fld == _TRUE_) || (pba->has_scf == _TRUE_) || (pba->has_curvature == _TRUE_) || (pba->has_pht == _TRUE_)) {
       printf(" ---> Other Content \n");
     }
     if (pba->has_lambda == _TRUE_) {
@@ -2866,6 +2924,10 @@ int background_output_budget(
       class_print_species("Spatial Curvature",k);
       budget_other+=pba->Omega0_k;
     }
+    if (pba->has_pht == _TRUE_) {
+      class_print_species("Phantom Field", pht);
+      budget_other+=pba->Omega0_pht;
+    }
 
     printf(" ---> Total budgets \n");
     printf(" Radiation                        Omega = %-15g , omega = %-15g \n",budget_radiation,budget_radiation*pba->h*pba->h);
@@ -2874,7 +2936,7 @@ int background_output_budget(
       printf(" - Non-Free-Streaming Matter      Omega = %-15g , omega = %-15g \n",pba->Omega0_nfsm,pba->Omega0_nfsm*pba->h*pba->h);
       printf(" - Non-Cold Dark Matter           Omega = %-15g , omega = %-15g \n",budget_neutrino,budget_neutrino*pba->h*pba->h);
     }
-    if ((pba->has_lambda == _TRUE_) || (pba->has_fld == _TRUE_) || (pba->has_scf == _TRUE_) || (pba->has_curvature == _TRUE_)) {
+    if ((pba->has_lambda == _TRUE_) || (pba->has_fld == _TRUE_) || (pba->has_scf == _TRUE_) || (pba->has_curvature == _TRUE_) || (pba->has_pht == _TRUE_)) {
       printf(" Other Content                    Omega = %-15g , omega = %-15g \n",budget_other,budget_other*pba->h*pba->h);
     }
     printf(" TOTAL                            Omega = %-15g , omega = %-15g \n",budget_radiation+budget_matter+budget_other,(budget_radiation+budget_matter+budget_other)*pba->h*pba->h);
