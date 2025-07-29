@@ -2341,8 +2341,8 @@ int input_read_parameters_species(struct file_content * pfc,
   /** Summary: */
 
   /** - Define local variables */
-  int flag1, flag2, flag3;
-  double param1, param2, param3;
+  int flag1, flag2, flag3, flag4;
+  double param1, param2, param3, param4;
   char string1[_ARGUMENT_LENGTH_MAX_];
   int fileentries;
   int N_ncdm=0, n, entries_read;
@@ -3185,6 +3185,9 @@ int input_read_parameters_species(struct file_content * pfc,
   class_call(parser_read_double(pfc,"Omega_scf",&param3,&flag3,errmsg),
              errmsg,
              errmsg);
+  class_call(parser_read_double(pfc,"Omega_pht",&param4,&flag4,errmsg),
+             errmsg,
+             errmsg);
   /* Test */
   class_test((flag1 == _TRUE_) && (flag2 == _TRUE_) && ((flag3 == _FALSE_) || (param3 >= 0.)),
              errmsg,
@@ -3192,6 +3195,15 @@ int input_read_parameters_species(struct file_content * pfc,
   class_test(((flag1 == _FALSE_)||(flag2 == _FALSE_)) && ((flag3 == _TRUE_) && (param3 < 0.)),
              errmsg,
              "You have entered 'Omega_scf' < 0 , so you have to specify both 'Omega_lambda' and 'Omega_fld'.");
+
+  /* condition for adding phantom field*/
+  class_call((flag4 == _TRUE_) && (param4 >= 0.),
+             errmsg,
+             "You have to set Omega_pht < 0");
+  class_call((flag3 == _FALSE_) && (flag4 == _TRUE_),
+             errmsg,
+             "You have to specify Omega_scf for considering phantom field");
+
   /* Complete set of parameters
      Case of (flag3 == _FALSE_) || (param3 >= 0.) means that either we have not
      read Omega_scf so we are ignoring it (unlike lambda and fld!) OR we have
@@ -3224,6 +3236,11 @@ int input_read_parameters_species(struct file_content * pfc,
     pba->Omega0_scf = param3;
     Omega_tot += pba->Omega0_scf;
   }
+  if ((flag4 == _TRUE_) && (param4 < 0.)){
+    pba->Omega0_pht = param4;
+    Omega_tot += pba->Omega0_pht;
+  }
+
   /* Step 2 */
   if (flag1 == _FALSE_) {
     /* Fill with Lambda */
@@ -3366,6 +3383,14 @@ int input_read_parameters_species(struct file_content * pfc,
       printf("'scf_lambda' = %e < 3 won't be tracking (for exp quint) unless overwritten by tuning function.",scf_lambda);
     }
   }
+
+  /** 8.c) If Omega phantom field (PHT) is different from 0 */
+  if (pba->Omega0_pht != 0.){
+    class_read_double("pht_delta",pba->pht_delta);
+    class_read_double("sigma_ini_pht",pba->sigma_ini_pht);
+    class_read_double("sigma_prime_ini_pht",pba->sigma_prime_ini_pht);
+  }
+
 
   return _SUCCESS_;
 
@@ -5900,6 +5925,7 @@ int input_default_params(struct background *pba,
   /** 9) Dark energy contributions */
   pba->Omega0_fld = 0.;
   pba->Omega0_scf = 0.;
+  pba->Omega0_pht = 0.;
   pba->Omega0_lambda = 1.-pba->Omega0_k-pba->Omega0_g-pba->Omega0_ur-pba->Omega0_b-pba->Omega0_cdm-pba->Omega0_ncdm_tot-pba->Omega0_dcdmdr - pba->Omega0_idr -pba->Omega0_idm;
   /** 8.a) Omega fluid */
   /** 8.a.1) PPF approximation */
@@ -5926,6 +5952,9 @@ int input_default_params(struct background *pba,
   pba->phi_prime_ini_scf = 1;          //     factors of the radiation attractor values
   /** 9.b.3) Tuning parameter */
   pba->scf_tuning_index = 0;
+  /** 9.c) Omega phantom field */
+  pba->sigma_ini_pht = 1.;
+  pba->sigma_prime_ini_pht = 1.;
 
   /**
    * Deafult to input_read_parameters_heating
