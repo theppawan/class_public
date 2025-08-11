@@ -534,6 +534,7 @@ int input_shooting(struct file_content * pfc,
                                        "Omega_dcdmdr",
                                        "omega_dcdmdr",
                                        "Omega_scf",
+                                       "Omega_pht",
                                        "Omega_ini_dcdm",
                                        "omega_ini_dcdm"};
 
@@ -557,7 +558,7 @@ int input_shooting(struct file_content * pfc,
                                         cs_background,     /* computation stage for target 'omega_dcdmdr' */
                                         cs_background,     /* computation stage for target 'Omega_scf' */
                                         cs_background,     /* computation stage for target 'Omega_ini_dcdm' */
-                                        cs_background};     /* computation stage for target 'omega_ini_dcdm' */
+                                        cs_background};    /* computation stage for target 'omega_ini_dcdm' */
 
   struct fzerofun_workspace fzw;
 
@@ -586,7 +587,6 @@ int input_shooting(struct file_content * pfc,
         fzw.required_computation_stage = MAX(fzw.required_computation_stage,target_cs[index_target]);
         unknown_parameters_size++;
       }
-
     }
   }
 
