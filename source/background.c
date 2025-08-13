@@ -611,7 +611,7 @@ int background_functions(
   }
   if (pba->has_pht == _TRUE_) {
     pvecback[pba->index_bg_p_prime_pht] = pvecback[pba->index_bg_sigma_prime_pht]*
-      (pvecback[pba->index_bg_sigma_prime_pht]*pvecback[pba->index_bg_H]/a - 1./3.*pba->pht_delta*rho_m);
+      (pvecback[pba->index_bg_sigma_prime_pht]*pvecback[pba->index_bg_H]/a - pba->pht_delta*(pvecback[pba->index_bg_rho_cdm] + pvecback[pba->index_bg_rho_b])); // rho_M
     pvecback[pba->index_bg_p_tot_prime] += pvecback[pba->index_bg_p_prime_pht];
   }
 
