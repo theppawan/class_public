@@ -2722,10 +2722,7 @@ int background_derivs(
 
   if ((pba->has_pht == _TRUE_) && (pba->has_scf == _TRUE_)) {
     dy[pba->index_bi_sigma_pht] = y[pba->index_bi_sigma_prime_pht]/a/H;
-    dy[pba->index_bi_sigma_prime_pht] = - 2*y[pba->index_bi_sigma_prime_pht] + a/H * pba->pht_delta *
-    (1 - 1./2*y[pba->index_bi_phi_prime_scf]*y[pba->index_bi_phi_prime_scf] - V_scf(pba,y[pba->index_bi_phi_scf]) 
-       + 1./2*y[pba->index_bi_sigma_prime_pht]*y[pba->index_bi_sigma_prime_pht]
-       - pvecback[pba->index_bg_rho_g] - pvecback[pba->index_bg_rho_ur]);
+    dy[pba->index_bi_sigma_prime_pht] = - 2*y[pba->index_bi_sigma_prime_pht] + 3 * a/H * pba->pht_delta * (pvecback[pba->index_bg_rho_b]+pvecback[pba->index_bg_rho_cdm]);
   }
 
   return _SUCCESS_;
