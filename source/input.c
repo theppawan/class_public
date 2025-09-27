@@ -535,6 +535,8 @@ int input_shooting(struct file_content * pfc,
                                        "omega_dcdmdr",
                                        "Omega_scf",
                                        "Omega_pht",
+                                       "Omega_b",
+                                       "Omega_cdm",
                                        "Omega_ini_dcdm",
                                        "omega_ini_dcdm"};
 
@@ -545,6 +547,9 @@ int input_shooting(struct file_content * pfc,
                                         "Omega_ini_dcdm",           /* unknown param for target 'Omega_dcdmd' */
                                         "omega_ini_dcdm",           /* unknown param for target 'omega_dcdmdr' */
                                         "scf_shooting_parameter",   /* unknown param for target 'Omega_scf' */
+                                        "pht_delta",
+                                        "Omega_ini_b",
+                                        "Omega_ini_cdm",
                                         "Omega_dcdmdr",             /* unknown param for target 'Omega_ini_dcdm' */
                                         "omega_dcdmdr"};             /* unknown param for target 'omega_ini_dcdm' */
 
@@ -557,6 +562,9 @@ int input_shooting(struct file_content * pfc,
                                         cs_background,     /* computation stage for target 'Omega_dcdmdr' */
                                         cs_background,     /* computation stage for target 'omega_dcdmdr' */
                                         cs_background,     /* computation stage for target 'Omega_scf' */
+                                        cs_background,
+                                        cs_background,
+                                        cs_background,
                                         cs_background,     /* computation stage for target 'Omega_ini_dcdm' */
                                         cs_background};    /* computation stage for target 'omega_ini_dcdm' */
 
@@ -1242,6 +1250,15 @@ int input_get_guess(double *xguess,
         dxdy[index_guess] = 1.;
       }
       break;
+    case Omega_pht:
+      xguess[index_guess] = ba.pht_delta;
+      dxdy[index_guess] = 1.;
+    case Omega_b:
+      xguess[index_guess] = (1-0.9999999999659318)*0.022383/(0.12011+0.022383);
+      dxdy[index_guess] = 1.;
+    case Omega_cdm:
+      xguess[index_guess] = (1-0.9999999999659318)*0.12011/(0.12011+0.022383);
+      dxdy[index_guess] = 1.;
     case omega_ini_dcdm:
       Omega0_dcdmdr = 1./(ba.h*ba.h);
     case Omega_ini_dcdm:

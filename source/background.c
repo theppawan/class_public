@@ -391,7 +391,7 @@ int background_functions(
   /* total non-relativistic density */
   double rho_m;
   /* background ncdm quantities */
-  double rho_ncdm,p_ncdm,pseudo_p_ncdm;
+  double rho_ncdm, p_ncdm, pseudo_p_ncdm;
   /* index for n_ncdm species */
   int n_ncdm;
   /* fluid's time-dependent equation of state parameter */
@@ -409,8 +409,8 @@ int background_functions(
   rho_tot = 0.;
   p_tot = 0.;
   dp_dloga = 0.;
-  rho_r=0.;
-  rho_m=0.;
+  rho_r = 0.;
+  rho_m = 0.;
 
   class_test(a <= 0.,
              pba->error_message,
@@ -429,14 +429,14 @@ int background_functions(
   rho_r += pvecback[pba->index_bg_rho_g];
 
   /* baryons */
-  pvecback[pba->index_bg_rho_b] = pba->Omega0_b * pow(pba->H0,2) / pow(a,3);
+  pvecback[pba->index_bg_rho_b] = pvecback_B[pba->index_bi_rho_b];
   rho_tot += pvecback[pba->index_bg_rho_b];
   p_tot += 0;
   rho_m += pvecback[pba->index_bg_rho_b];
 
   /* cdm */
   if (pba->has_cdm == _TRUE_) {
-    pvecback[pba->index_bg_rho_cdm] = pba->Omega0_cdm * pow(pba->H0,2) / pow(a,3);
+    pvecback[pba->index_bg_rho_cdm] = pvecback_B[pba->index_bi_rho_cdm];
     rho_tot += pvecback[pba->index_bg_rho_cdm];
     p_tot += 0.;
     rho_m += pvecback[pba->index_bg_rho_cdm];
@@ -1191,6 +1191,12 @@ int background_indices(
      First {B} variables, then {C} variables. */
 
   index_bi=0;
+
+  /* -> index for baryon density that is coupling with phantom model in Quintom model*/
+  class_define_index(pba->index_bi_rho_b,_TRUE_,index_bi,1);
+
+  /* -> index for cdm density that is coupling with phantom model in Quintom model*/
+  class_define_index(pba->index_bi_rho_cdm,_TRUE_,index_bi,1);
 
   /* -> index for conformal time in vector of variables to integrate */
   class_define_index(pba->index_bi_tau,_TRUE_,index_bi,1);
@@ -2259,6 +2265,11 @@ int background_initial_conditions(
       pba->Omega_ini_dcdm*pba->H0*pba->H0*pow(a,-3);
     if (pba->background_verbose > 3)
       printf("Density is %g. Omega_ini=%g\n",pvecback_integration[pba->index_bi_rho_dcdm],pba->Omega_ini_dcdm);
+  }
+
+  pvecback_integration[pba->index_bi_rho_b] = pba->Omega_ini_b*pba->H0*pba->H0;
+  if (pba->has_cdm == _TRUE_) {
+    pvecback_integration[pba->index_bi_rho_cdm] = pba->Omega_ini_cdm*pba->H0*pba->H0;
   }
 
   if (pba->has_dr == _TRUE_) {

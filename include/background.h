@@ -62,10 +62,12 @@ struct background
   double T_cmb;    /**< \f$ T_{cmb} \f$: current CMB temperature in Kelvins */
 
   double Omega0_b; /**< \f$ \Omega_{0 b} \f$: baryons */
+  double Omega_ini_b;
 
   double Omega0_ur; /**< \f$ \Omega_{0 \nu r} \f$: ultra-relativistic neutrinos */
 
   double Omega0_cdm;      /**< \f$ \Omega_{0 cdm} \f$: cold dark matter */
+  double Omega_ini_cdm;
 
   double Omega0_idm; /**< \f$ \Omega_{0 idm} \f$: interacting dark matter with photons, baryons, and idr */
 
@@ -264,6 +266,8 @@ struct background
 
   //@{
 
+  int index_bi_rho_b;   /**< {B} baryon density due to it is coupling with phantom field in Quintom model */
+  int index_bi_rho_cdm; /**< {B} cdm density due to it is coupling with phantom field in Quintom model */
   int index_bi_rho_dcdm;/**< {B} dcdm density */
   int index_bi_rho_dr;  /**< {B} dr density */
   int index_bi_rho_fld; /**< {B} fluid density */
