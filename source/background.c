@@ -429,17 +429,35 @@ int background_functions(
   rho_r += pvecback[pba->index_bg_rho_g];
 
   /* baryons */
-  pvecback[pba->index_bg_rho_b] = pvecback_B[pba->index_bi_rho_b];
-  rho_tot += pvecback[pba->index_bg_rho_b];
-  p_tot += 0;
-  rho_m += pvecback[pba->index_bg_rho_b];
+
+  if (pba->has_pht) {
+    pvecback[pba->index_bg_rho_b] = pvecback_B[pba->index_bi_rho_b];
+    rho_tot += pvecback[pba->index_bg_rho_b];
+    p_tot += 0;
+    rho_m += pvecback[pba->index_bg_rho_b];
+  }
+  else {
+    pvecback[pba->index_bg_rho_b] = pba->Omega0_b * pow(pba->H0,2) / pow(a,3);
+    rho_tot += pvecback[pba->index_bg_rho_b];
+    p_tot += 0;
+    rho_m += pvecback[pba->index_bg_rho_b];
+  }
+
 
   /* cdm */
   if (pba->has_cdm == _TRUE_) {
-    pvecback[pba->index_bg_rho_cdm] = pvecback_B[pba->index_bi_rho_cdm];
-    rho_tot += pvecback[pba->index_bg_rho_cdm];
-    p_tot += 0.;
-    rho_m += pvecback[pba->index_bg_rho_cdm];
+    if (pba->has_pht == _TRUE_) {
+      pvecback[pba->index_bg_rho_cdm] = pvecback_B[pba->index_bi_rho_cdm];
+      rho_tot += pvecback[pba->index_bg_rho_cdm];
+      p_tot += 0.;
+      rho_m += pvecback[pba->index_bg_rho_cdm];
+    }
+    else {
+      pvecback[pba->index_bg_rho_cdm] = pba->Omega0_cdm * pow(pba->H0,2) / pow(a,3);
+      rho_tot += pvecback[pba->index_bg_rho_cdm];
+      p_tot += 0.;
+      rho_m += pvecback[pba->index_bg_rho_cdm];
+    }
   }
 
   /* idm */
@@ -2731,7 +2749,12 @@ int background_derivs(
     dy[pba->index_bi_phi_prime_scf] = - 2*y[pba->index_bi_phi_prime_scf] - a*dV_scf(pba,y[pba->index_bi_phi_scf])/H ;
   }
 
+  /** phantom field coupling with matter */
   if ((pba->has_pht == _TRUE_) && (pba->has_scf == _TRUE_)) {
+    if (pba->has_cdm == _TRUE_) {
+       dy[pba->index_bi_rho_cdm] = -3.*y[pba->index_bi_rho_cdm] + 3*pba->pht_delta/H*y[pba->index_bi_rho_cdm]*y[pba->index_bi_sigma_prime_pht];
+    }
+    dy[pba->index_bi_rho_b] = -3.*y[pba->index_bi_rho_b] + 3*pba->pht_delta/H*y[pba->index_bi_rho_b]*y[pba->index_bi_sigma_prime_pht];
     dy[pba->index_bi_sigma_pht] = y[pba->index_bi_sigma_prime_pht]/a/H;
     dy[pba->index_bi_sigma_prime_pht] = - 2*y[pba->index_bi_sigma_prime_pht] + 3 * a/H * pba->pht_delta * (pvecback[pba->index_bg_rho_b]+pvecback[pba->index_bg_rho_cdm]);
   }
