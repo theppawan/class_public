@@ -1253,12 +1253,15 @@ int input_get_guess(double *xguess,
     case Omega_pht:
       xguess[index_guess] = ba.pht_delta;
       dxdy[index_guess] = 1.;
+      break;
     case Omega_b:
-      xguess[index_guess] = pfzw->target_value[index_guess] * ba.H0 * ba.H0 * pow(pr.a_ini_over_a_today_default, -3);
-      dxdy[index_guess] =  pow(pr.a_ini_over_a_today_default, -3);
+      xguess[index_guess] = pfzw->target_value[index_guess]*ba.H0*ba.H0*pow(pr.a_ini_over_a_today_default, -3);
+      dxdy[index_guess] =  1e-4;
+      break;
     case Omega_cdm:
-      xguess[index_guess] = pfzw->target_value[index_guess] * ba.H0 * ba.H0 * pow(pr.a_ini_over_a_today_default, -3);
-      dxdy[index_guess] =  pow(pr.a_ini_over_a_today_default, -3);
+      xguess[index_guess] = pfzw->target_value[index_guess]*ba.H0*ba.H0*pow(pr.a_ini_over_a_today_default, -3);
+      dxdy[index_guess] =  1e-4;
+      break;
     case omega_ini_dcdm:
       Omega0_dcdmdr = 1./(ba.h*ba.h);
     case Omega_ini_dcdm:
@@ -3422,6 +3425,7 @@ int input_read_parameters_species(struct file_content * pfc,
 
   /** 8.c) If Omega phantom field (PHT) is different from 0 */
   if (pba->Omega0_pht != 0.){
+    class_read_double("pht_delta",pba->pht_delta);
     class_read_double("pht_shooting_parameter",pba->pht_delta);
     class_read_double("sigma_ini_pht",pba->sigma_ini_pht);
     class_read_double("sigma_prime_ini_pht",pba->sigma_prime_ini_pht);

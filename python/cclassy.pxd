@@ -100,6 +100,8 @@ cdef extern from "class.h":
         double Omega0_dcdmdr
         double Omega0_dr
         double Omega0_scf
+        double Omega0_pht
+        double pht_delta
         double Omega0_k
         int bt_size
         double Omega0_m

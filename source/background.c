@@ -2360,7 +2360,7 @@ int background_initial_conditions(
   if (pba->has_pht == _TRUE_) {
 
     pvecback_integration[pba->index_bi_rho_b] = pba->Omega_ini_b*pba->H0*pba->H0*pow(a,-3);
-    pvecback_integration[pba->index_bi_rho_cdm] = pba->Omega_ini_b*pba->H0*pba->H0*pow(a,-3);
+    pvecback_integration[pba->index_bi_rho_cdm] = pba->Omega_ini_cdm*pba->H0*pba->H0*pow(a,-3);
     pvecback_integration[pba->index_bi_sigma_pht] = pba->sigma_ini_pht;
     pvecback_integration[pba->index_bi_sigma_prime_pht] = pba->sigma_prime_ini_pht;
   }
@@ -2749,11 +2749,11 @@ int background_derivs(
   /** phantom field coupling with matter */
   if ((pba->has_pht == _TRUE_) && (pba->has_scf == _TRUE_)) {
     if (pba->has_cdm == _TRUE_) {
-       dy[pba->index_bi_rho_cdm] = -3.*y[pba->index_bi_rho_cdm] + pba->pht_delta/H*y[pba->index_bi_rho_cdm]*y[pba->index_bi_sigma_prime_pht];
+       dy[pba->index_bi_rho_cdm] = -3.*y[pba->index_bi_rho_cdm] + pba->pht_delta/H*y[pba->index_bi_rho_cdm]*y[pba->index_bi_sigma_prime_pht]/a;
     }
-    dy[pba->index_bi_rho_b] = -3.*y[pba->index_bi_rho_b] + pba->pht_delta/H*y[pba->index_bi_rho_b]*y[pba->index_bi_sigma_prime_pht];
+    dy[pba->index_bi_rho_b] = -3.*y[pba->index_bi_rho_b] + pba->pht_delta/H*y[pba->index_bi_rho_b]*y[pba->index_bi_sigma_prime_pht]/a;
     dy[pba->index_bi_sigma_pht] = y[pba->index_bi_sigma_prime_pht]/a/H;
-    dy[pba->index_bi_sigma_prime_pht] = - 2*y[pba->index_bi_sigma_prime_pht] + 3 * a/H * pba->pht_delta * (pvecback[pba->index_bg_rho_b]+pvecback[pba->index_bg_rho_cdm]);
+    dy[pba->index_bi_sigma_prime_pht] = - 2*y[pba->index_bi_sigma_prime_pht] + 3 * a/H * pba->pht_delta * (y[pba->index_bi_rho_b]+y[pba->index_bi_rho_cdm]);
   }
 
   return _SUCCESS_;
