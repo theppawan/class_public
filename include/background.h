@@ -63,11 +63,13 @@ struct background
 
   double Omega0_b; /**< \f$ \Omega_{0 b} \f$: baryons */
   double Omega_ini_b;
+  double rho_b_ini;
 
   double Omega0_ur; /**< \f$ \Omega_{0 \nu r} \f$: ultra-relativistic neutrinos */
 
   double Omega0_cdm;      /**< \f$ \Omega_{0 cdm} \f$: cold dark matter */
   double Omega_ini_cdm;
+  double rho_cdm_ini;
 
   double Omega0_idm; /**< \f$ \Omega_{0 idm} \f$: interacting dark matter with photons, baryons, and idr */
 

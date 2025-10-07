@@ -547,7 +547,7 @@ int input_shooting(struct file_content * pfc,
                                         "Omega_ini_dcdm",           /* unknown param for target 'Omega_dcdmd' */
                                         "omega_ini_dcdm",           /* unknown param for target 'omega_dcdmdr' */
                                         "scf_shooting_parameter",   /* unknown param for target 'Omega_scf' */
-                                        "pht_delta",
+                                        "pht_shooting_parameter",
                                         "Omega_ini_b",
                                         "Omega_ini_cdm",
                                         "Omega_dcdmdr",             /* unknown param for target 'Omega_ini_dcdm' */
@@ -1254,11 +1254,11 @@ int input_get_guess(double *xguess,
       xguess[index_guess] = ba.pht_delta;
       dxdy[index_guess] = 1.;
     case Omega_b:
-      xguess[index_guess] = (1-0.9999999999659318)*0.022383/(0.12011+0.022383);
-      dxdy[index_guess] = 1.;
+      xguess[index_guess] = pfzw->target_value[index_guess] * ba.H0 * ba.H0 * pow(pr.a_ini_over_a_today_default, -3);
+      dxdy[index_guess] =  pow(pr.a_ini_over_a_today_default, -3);
     case Omega_cdm:
-      xguess[index_guess] = (1-0.9999999999659318)*0.12011/(0.12011+0.022383);
-      dxdy[index_guess] = 1.;
+      xguess[index_guess] = pfzw->target_value[index_guess] * ba.H0 * ba.H0 * pow(pr.a_ini_over_a_today_default, -3);
+      dxdy[index_guess] =  pow(pr.a_ini_over_a_today_default, -3);
     case omega_ini_dcdm:
       Omega0_dcdmdr = 1./(ba.h*ba.h);
     case Omega_ini_dcdm:
@@ -1491,6 +1491,12 @@ int input_try_unknown_parameters(double * unknown_parameter,
       /** In case scalar field is used to fill, pba->Omega0_scf is not equal to pfzw->target_value[i].*/
       output[i] = ba.background_table[(ba.bt_size-1)*ba.bg_size+ba.index_bg_rho_scf]/(ba.H0*ba.H0)-ba.Omega0_scf;
       break;
+    case Omega_pht:
+      output[i] = ba.background_table[(ba.bt_size-1)*ba.bg_size+ba.index_bg_rho_pht]/(ba.H0*ba.H0)-pfzw->target_value[i];
+    case Omega_b:
+      output[i] = ba.background_table[(ba.bt_size-1)*ba.bg_size+ba.index_bg_rho_b]/(ba.H0*ba.H0)-pfzw->target_value[i];
+    case Omega_cdm:
+      output[i] = ba.background_table[(ba.bt_size-1)*ba.bg_size+ba.index_bg_rho_cdm]/(ba.H0*ba.H0)-pfzw->target_value[i];
     case Omega_ini_dcdm:
     case omega_ini_dcdm:
       rho_dcdm_today = ba.background_table[(ba.bt_size-1)*ba.bg_size+ba.index_bg_rho_dcdm];
@@ -2435,6 +2441,12 @@ int input_read_parameters_species(struct file_content * pfc,
   }
   class_test(pba->Omega0_b<0,errmsg,"You cannot set the baryon density to negative values.");
 
+  class_call(parser_read_double(pfc,"Omega_ini_b",&param1,&flag1,errmsg),
+             errmsg,
+             errmsg);
+    if (flag1 == _TRUE_){
+    pba->Omega_ini_b = param1;
+  }
 
   /** 3) Omega_0_ur (ultra-relativistic species / massless neutrino) */
   /* Read */
@@ -2510,6 +2522,13 @@ int input_read_parameters_species(struct file_content * pfc,
     has_cdm_userdefined = _TRUE_;
   }
   class_test(pba->Omega0_cdm<0,errmsg, "You cannot set the cold dark matter density to negative values.");
+
+  class_call(parser_read_double(pfc,"Omega_ini_cdm",&param1,&flag1,errmsg),
+             errmsg,
+             errmsg);
+    if (flag1 == _TRUE_){
+    pba->Omega_ini_cdm = param1;
+  }
 
   /** 4) (Second part) Omega_0_m (total non-relativistic) */
   class_call(parser_read_double(pfc,"Omega_m",&param1,&flag1,errmsg),
@@ -3403,7 +3422,7 @@ int input_read_parameters_species(struct file_content * pfc,
 
   /** 8.c) If Omega phantom field (PHT) is different from 0 */
   if (pba->Omega0_pht != 0.){
-    class_read_double("pht_delta",pba->pht_delta);
+    class_read_double("pht_shooting_parameter",pba->pht_delta);
     class_read_double("sigma_ini_pht",pba->sigma_ini_pht);
     class_read_double("sigma_prime_ini_pht",pba->sigma_prime_ini_pht);
   }
@@ -5855,6 +5874,7 @@ int input_default_params(struct background *pba,
 
   /** 2) Baryon density */
   pba->Omega0_b = 0.02238280/pow(pba->h,2);
+  pba->Omega_ini_b = 0.;
 
   /** 3) Ultra-relativistic species / massless neutrino density,
       assuming as default value N_eff=3.044 (see 2008.01074 and
@@ -5868,6 +5888,7 @@ int input_default_params(struct background *pba,
 
   /** 4) CDM density */
   pba->Omega0_cdm = 0.1201075/pow(pba->h,2);
+  pba->Omega_ini_cdm = 0.;
 
   /** 5) ncdm sector */
   /** 5.a) Number of distinct species */
