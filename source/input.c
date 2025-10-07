@@ -1167,6 +1167,8 @@ int input_get_guess(double *xguess,
   int index_guess;
   int index_ncdm; double N_nonur_guess = 0.0;
 
+  double a_ini = pr.a_ini_over_a_today_default;
+
   /* Cheat to read only known parameters: */
   pfzw->fc.size -= pfzw->target_size;
 
@@ -1250,14 +1252,16 @@ int input_get_guess(double *xguess,
         dxdy[index_guess] = 1.;
       }
       break;
-    case Omega_pht:
-      xguess[index_guess] = ba.pht_delta;
-      dxdy[index_guess] = 1.;
     case Omega_b:
-      xguess[index_guess] = (1-0.9999999999659318)*0.022383/(0.12011+0.022383);
-      dxdy[index_guess] = 1.;
+      // TODO: check a_ini
+      xguess[index_guess] = (ba.rho_b_ini>0)? ba.rho_b_ini: ba.Omega0_b * ba.H0 * ba.H0 * pow(a_ini, -3);
+      dxdy[index_guess] = pow(a_ini, -3);
+      break;
     case Omega_cdm:
-      xguess[index_guess] = (1-0.9999999999659318)*0.12011/(0.12011+0.022383);
+      xguess[index_guess] = (ba.rho_cdm_ini>0)? ba.rho_cdm_ini: ba.Omega0_cdm * ba.H0 * ba.H0 * pow(a_ini, -3);
+      dxdy[index_guess] = pow(a_ini, -3);
+    case Omega_pht:
+      xguess[index_guess] = ba.sigma_prime_ini_pht;
       dxdy[index_guess] = 1.;
     case omega_ini_dcdm:
       Omega0_dcdmdr = 1./(ba.h*ba.h);

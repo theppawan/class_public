@@ -429,15 +429,14 @@ int background_functions(
   rho_r += pvecback[pba->index_bg_rho_g];
 
   /* baryons */
-
-  if (pba->has_pht) {
-    pvecback[pba->index_bg_rho_b] = pvecback_B[pba->index_bi_rho_b];
+  if (pba->has_pht == _FALSE_) {
+    pvecback[pba->index_bg_rho_b] = pba->Omega0_b * pow(pba->H0,2) / pow(a,3);
     rho_tot += pvecback[pba->index_bg_rho_b];
     p_tot += 0;
     rho_m += pvecback[pba->index_bg_rho_b];
   }
   else {
-    pvecback[pba->index_bg_rho_b] = pba->Omega0_b * pow(pba->H0,2) / pow(a,3);
+    pvecback[pba->index_bg_rho_b] = pvecback_B[pba->index_bi_rho_b];
     rho_tot += pvecback[pba->index_bg_rho_b];
     p_tot += 0;
     rho_m += pvecback[pba->index_bg_rho_b];
@@ -445,15 +444,15 @@ int background_functions(
 
 
   /* cdm */
-  if (pba->has_cdm == _TRUE_) {
-    if (pba->has_pht == _TRUE_) {
-      pvecback[pba->index_bg_rho_cdm] = pvecback_B[pba->index_bi_rho_cdm];
+  if (pba->has_pht == _FALSE_) {
+    if (pba->has_cdm == _TRUE_) {
+      pvecback[pba->index_bg_rho_cdm] = pba->Omega0_cdm * pow(pba->H0,2) / pow(a,3);
       rho_tot += pvecback[pba->index_bg_rho_cdm];
       p_tot += 0.;
       rho_m += pvecback[pba->index_bg_rho_cdm];
     }
     else {
-      pvecback[pba->index_bg_rho_cdm] = pba->Omega0_cdm * pow(pba->H0,2) / pow(a,3);
+      pvecback[pba->index_bg_rho_cdm] = pvecback_B[pba->index_bi_rho_cdm];
       rho_tot += pvecback[pba->index_bg_rho_cdm];
       p_tot += 0.;
       rho_m += pvecback[pba->index_bg_rho_cdm];
@@ -628,6 +627,7 @@ int background_functions(
     pvecback[pba->index_bg_p_tot_prime] += pvecback[pba->index_bg_p_prime_scf];
   }
   if (pba->has_pht == _TRUE_) {
+    /* add p_prime_pht to the total pressure here */
     pvecback[pba->index_bg_p_prime_pht] = pvecback[pba->index_bg_sigma_prime_pht]*
       (pvecback[pba->index_bg_sigma_prime_pht]*pvecback[pba->index_bg_H]/a - pba->pht_delta*(pvecback[pba->index_bg_rho_cdm] + pvecback[pba->index_bg_rho_b])); // rho_M
     pvecback[pba->index_bg_p_tot_prime] += pvecback[pba->index_bg_p_prime_pht];
@@ -2285,10 +2285,10 @@ int background_initial_conditions(
       printf("Density is %g. Omega_ini=%g\n",pvecback_integration[pba->index_bi_rho_dcdm],pba->Omega_ini_dcdm);
   }
 
-  pvecback_integration[pba->index_bi_rho_b] = pba->Omega_ini_b*pba->H0*pba->H0;
-  if (pba->has_cdm == _TRUE_) {
-    pvecback_integration[pba->index_bi_rho_cdm] = pba->Omega_ini_cdm*pba->H0*pba->H0;
-  }
+  // pvecback_integration[pba->index_bi_rho_b] = pba->Omega_ini_b*pba->H0*pba->H0;
+  // if (pba->has_cdm == _TRUE_) {
+  //   pvecback_integration[pba->index_bi_rho_cdm] = pba->Omega_ini_cdm*pba->H0*pba->H0;
+  // }
 
   if (pba->has_dr == _TRUE_) {
     if (pba->has_dcdm == _TRUE_) {
@@ -2364,8 +2364,32 @@ int background_initial_conditions(
                pvecback_integration[pba->index_bi_phi_scf]);
   }
   if (pba->has_pht == _TRUE_) {
+    /* -- baryon and cdm to integrate -- */
+    if (pba->index_bi_rho_b >=0) {
+      double rho_b_ini = pba->rho_b_ini;
+      if (rho_b_ini <= 0.0) {
+        rho_b_ini = pba->Omega0_b * pba->H0 * pba->H0 * pow(a, -3);
+      }
+      pvecback_integration[pba->index_bi_rho_b] = rho_b_ini;
+    }
+    if ((pba->has_cdm == _TRUE_) && (pba->index_bi_rho_cdm >=0)) {
+      double rho_cdm_ini = pba->rho_cdm_ini;
+      if (rho_cdm_ini <= 0.0) {
+        rho_cdm_ini = pba->Omega0_cdm * pba->H0 * pba->H0 * pow(a, -3);
+      }
+      pvecback_integration[pba->index_bi_rho_cdm] = rho_cdm_ini;
+    }
+
+    /* -- phantom field -- */
     pvecback_integration[pba->index_bi_sigma_pht] = pba->sigma_ini_pht;
     pvecback_integration[pba->index_bi_sigma_prime_pht] = pba->sigma_prime_ini_pht;
+
+    class_test(!isfinite(pvecback_integration[pba->index_bi_sigma_pht]) ||
+               !isfinite(pvecback_integration[pba->index_bi_sigma_prime_pht]),
+               pba->error_message,
+               "Bad sigma_pht Ics, sigma_ini_pht = %e sigma_prime_ini_pht = %e -> check initial conditions",
+               pvecback_integration[pba->index_bi_sigma_pht],
+               pvecback_integration[pba->index_bi_sigma_prime_pht]);
   }
 
   /* Infer pvecback from pvecback_integration */
@@ -2724,6 +2748,7 @@ int background_derivs(
     rho_M += pvecback[pba->index_bg_rho_idm];
   }
 
+  // TODO: input rho_M for phatom field coupling with matter to the growth equation
   dy[pba->index_bi_D] = y[pba->index_bi_D_prime]/a/H;
   dy[pba->index_bi_D_prime] = -y[pba->index_bi_D_prime] + 1.5*a*rho_M*y[pba->index_bi_D]/H;
 
@@ -2750,13 +2775,17 @@ int background_derivs(
   }
 
   /** phantom field coupling with matter */
-  if ((pba->has_pht == _TRUE_) && (pba->has_scf == _TRUE_)) {
+  if (pba->has_pht == _TRUE_) {
+    /* -- baryon: \f$ d\rho_b/dlna = -3\rho_b + 3 \delta \rho_b \sigma'/ (aH) \f$ --*/
+    dy[pba->index_bi_rho_b] = -3.*y[pba->index_bi_rho_b] + 3*pba->pht_delta/a/H*y[pba->index_bi_rho_b]*y[pba->index_bi_sigma_prime_pht];
+
+    /* -- cdm: \f$ d\rho_cdm/dlna = -3\rho_cdm + 3 \delta \rho_cdm \sigma'/ (aH) \f$ --*/
     if (pba->has_cdm == _TRUE_) {
        dy[pba->index_bi_rho_cdm] = -3.*y[pba->index_bi_rho_cdm] + 3*pba->pht_delta/H*y[pba->index_bi_rho_cdm]*y[pba->index_bi_sigma_prime_pht];
     }
-    dy[pba->index_bi_rho_b] = -3.*y[pba->index_bi_rho_b] + 3*pba->pht_delta/H*y[pba->index_bi_rho_b]*y[pba->index_bi_sigma_prime_pht];
+    /* -- phantom field: d\sigma/dloga = sigma'/(aH), d\sigma'/dloga = -2\sigma' + 3 (a/H) delta (\rho_b + \rho_cdm)-- */
     dy[pba->index_bi_sigma_pht] = y[pba->index_bi_sigma_prime_pht]/a/H;
-    dy[pba->index_bi_sigma_prime_pht] = - 2*y[pba->index_bi_sigma_prime_pht] + 3 * a/H * pba->pht_delta * (pvecback[pba->index_bg_rho_b]+pvecback[pba->index_bg_rho_cdm]);
+    dy[pba->index_bi_sigma_prime_pht] = - 2*y[pba->index_bi_sigma_prime_pht] + 3 * a/H * pba->pht_delta * (y[pba->index_bi_rho_b]+y[pba->index_bi_rho_cdm]);
   }
 
   return _SUCCESS_;

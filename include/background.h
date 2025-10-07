@@ -123,6 +123,11 @@ struct background
   double phi_ini_scf;      /**< \f$ \phi(t_0) \f$: scalar field initial value */
   double phi_prime_ini_scf;/**< \f$ d\phi(t_0)/d\tau \f$: scalar field initial derivative wrt conformal time */
   int scf_parameters_size; /**< size of scf_parameters */
+
+  /* Only if integrating baryon & cdm as B-variables */
+  double rho_b_ini;  /**< \f$ \rho_b(t_0) \f$: baryon initial density */
+  double rho_cdm_ini;/**< \f$ \rho_cdm(t_0) \f$: cdm initial density */
+  /* ---- */
   double pht_delta;
   double sigma_ini_pht;    /**< \f$ \sigma(t_0) \f$: scalar field initial value */
   double sigma_prime_ini_pht;   /**< \f$ d\sigma(t_0)/d\tau \f$: scalar field initial derivative wrt conformal time */
