@@ -1252,15 +1252,15 @@ int input_get_guess(double *xguess,
       break;
     case Omega_pht:
       xguess[index_guess] = ba.pht_delta;
-      dxdy[index_guess] = 1.;
+      dxdy[index_guess] = -1.;
       break;
     case Omega_b:
-      xguess[index_guess] = pfzw->target_value[index_guess]*ba.H0*ba.H0*pow(pr.a_ini_over_a_today_default, -3);
-      dxdy[index_guess] =  1e-4;
+      xguess[index_guess] = pfzw->target_value[index_guess]*pr.a_ini_over_a_today_default;
+      dxdy[index_guess] =  pr.a_ini_over_a_today_default;
       break;
     case Omega_cdm:
-      xguess[index_guess] = pfzw->target_value[index_guess]*ba.H0*ba.H0*pow(pr.a_ini_over_a_today_default, -3);
-      dxdy[index_guess] =  1e-4;
+      xguess[index_guess] = pfzw->target_value[index_guess]*pr.a_ini_over_a_today_default;
+      dxdy[index_guess] =  pr.a_ini_over_a_today_default;
       break;
     case omega_ini_dcdm:
       Omega0_dcdmdr = 1./(ba.h*ba.h);
@@ -1496,10 +1496,13 @@ int input_try_unknown_parameters(double * unknown_parameter,
       break;
     case Omega_pht:
       output[i] = ba.background_table[(ba.bt_size-1)*ba.bg_size+ba.index_bg_rho_pht]/(ba.H0*ba.H0)-pfzw->target_value[i];
+      break;
     case Omega_b:
       output[i] = ba.background_table[(ba.bt_size-1)*ba.bg_size+ba.index_bg_rho_b]/(ba.H0*ba.H0)-pfzw->target_value[i];
+      break;
     case Omega_cdm:
       output[i] = ba.background_table[(ba.bt_size-1)*ba.bg_size+ba.index_bg_rho_cdm]/(ba.H0*ba.H0)-pfzw->target_value[i];
+      break;
     case Omega_ini_dcdm:
     case omega_ini_dcdm:
       rho_dcdm_today = ba.background_table[(ba.bt_size-1)*ba.bg_size+ba.index_bg_rho_dcdm];
@@ -2448,8 +2451,9 @@ int input_read_parameters_species(struct file_content * pfc,
              errmsg,
              errmsg);
     if (flag1 == _TRUE_){
-    pba->Omega_ini_b = param1;
-  }
+      pba->Omega_ini_b = param1;
+      printf("Omega_ini_b = %e \n", pba->Omega_ini_b);
+    }
 
   /** 3) Omega_0_ur (ultra-relativistic species / massless neutrino) */
   /* Read */
@@ -2530,7 +2534,8 @@ int input_read_parameters_species(struct file_content * pfc,
              errmsg,
              errmsg);
     if (flag1 == _TRUE_){
-    pba->Omega_ini_cdm = param1;
+      pba->Omega_ini_cdm = param1;
+      printf("Omega_ini_cdm = %e \n", pba->Omega_ini_cdm);
   }
 
   /** 4) (Second part) Omega_0_m (total non-relativistic) */
@@ -3417,6 +3422,7 @@ int input_read_parameters_species(struct file_content * pfc,
     /* Read */
     class_read_double("scf_shooting_parameter",pba->scf_parameters[pba->scf_tuning_index]);
     /* Complete set of parameters */
+    printf("scf_shooting = %e \n",pba->scf_parameters[pba->scf_tuning_index]);
     scf_lambda = pba->scf_parameters[0];
     if ((fabs(scf_lambda) < 3.)&&(pba->background_verbose>1)){
       printf("'scf_lambda' = %e < 3 won't be tracking (for exp quint) unless overwritten by tuning function.",scf_lambda);
@@ -3427,6 +3433,7 @@ int input_read_parameters_species(struct file_content * pfc,
   if (pba->Omega0_pht != 0.){
     class_read_double("pht_delta",pba->pht_delta);
     class_read_double("pht_shooting_parameter",pba->pht_delta);
+      printf("pht_delta = %e \n",pba->pht_delta);
     class_read_double("sigma_ini_pht",pba->sigma_ini_pht);
     class_read_double("sigma_prime_ini_pht",pba->sigma_prime_ini_pht);
   }

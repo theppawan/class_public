@@ -2363,6 +2363,12 @@ int background_initial_conditions(
     pvecback_integration[pba->index_bi_rho_cdm] = pba->Omega_ini_cdm*pba->H0*pba->H0*pow(a,-3);
     pvecback_integration[pba->index_bi_sigma_pht] = pba->sigma_ini_pht;
     pvecback_integration[pba->index_bi_sigma_prime_pht] = pba->sigma_prime_ini_pht;
+    class_test(!isfinite(pvecback_integration[pba->index_bi_sigma_pht]) ||
+            !isfinite(pvecback_integration[pba->index_bi_sigma_prime_pht]),
+            pba->error_message,
+            "initial sigma = %e sigma_prime = %e -> check initial conditions",
+            pvecback_integration[pba->index_bi_sigma_pht],
+            pvecback_integration[pba->index_bi_sigma_prime_pht]);
   }
 
   /* Infer pvecback from pvecback_integration */
@@ -2374,8 +2380,8 @@ int background_initial_conditions(
      dominated regime */
   class_test(fabs(pvecback[pba->index_bg_Omega_r]-1.) > ppr->tol_initial_Omega_r,
              pba->error_message,
-             "Omega_r = %e, not close enough to 1. Decrease a_ini_over_a_today_default in order to start from radiation domination.",
-             pvecback[pba->index_bg_Omega_r]);
+             "Omega_b = %e, Omega_cdm = %e, Omega_r = %e, not close enough to 1. Decrease a_ini_over_a_today_default in order to start from radiation domination.",
+             pba->Omega_ini_b, pba->Omega_ini_cdm, pvecback[pba->index_bg_Omega_r]);
 
   /** - compute initial proper time, assuming radiation-dominated
       universe since Big Bang and therefore \f$ t=1/(2H) \f$ (good
