@@ -3221,9 +3221,9 @@ int input_read_parameters_species(struct file_content * pfc,
   class_call((flag4 == _TRUE_) && (param4 >= 0.),
              errmsg,
              "You have to set Omega_pht < 0");
-  class_call((flag3 == _FALSE_) && (flag4 == _TRUE_),
-             errmsg,
-             "You have to specify Omega_scf for considering phantom field");
+  // class_call((flag3 == _FALSE_) && (flag4 == _TRUE_),
+  //            errmsg,
+  //            "You have to specify Omega_scf for considering phantom field");
 
   /* Complete set of parameters
      Case of (flag3 == _FALSE_) || (param3 >= 0.) means that either we have not

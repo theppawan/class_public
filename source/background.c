@@ -2776,12 +2776,12 @@ int background_derivs(
 
   /** phantom field coupling with matter */
   if (pba->has_pht == _TRUE_) {
-    /* -- baryon: \f$ d\rho_b/dlna = -3\rho_b + 3 \delta \rho_b \sigma'/ (aH) \f$ --*/
-    dy[pba->index_bi_rho_b] = -3.*y[pba->index_bi_rho_b] + 3*pba->pht_delta/a/H*y[pba->index_bi_rho_b]*y[pba->index_bi_sigma_prime_pht];
+    /* -- baryon: \f$ d\rho_b/dlna = -3\rho_b + \delta \rho_b \sigma'/ (aH) \f$ --*/
+    dy[pba->index_bi_rho_b] = -3.*y[pba->index_bi_rho_b] + pba->pht_delta/a/H*y[pba->index_bi_rho_b]*y[pba->index_bi_sigma_prime_pht];
 
-    /* -- cdm: \f$ d\rho_cdm/dlna = -3\rho_cdm + 3 \delta \rho_cdm \sigma'/ (aH) \f$ --*/
+    /* -- cdm: \f$ d\rho_cdm/dlna = -3\rho_cdm + \delta \rho_cdm \sigma'/ (aH) \f$ --*/
     if (pba->has_cdm == _TRUE_) {
-       dy[pba->index_bi_rho_cdm] = -3.*y[pba->index_bi_rho_cdm] + 3*pba->pht_delta/H*y[pba->index_bi_rho_cdm]*y[pba->index_bi_sigma_prime_pht];
+       dy[pba->index_bi_rho_cdm] = -3.*y[pba->index_bi_rho_cdm] + pba->pht_delta/H*y[pba->index_bi_rho_cdm]*y[pba->index_bi_sigma_prime_pht];
     }
     /* -- phantom field: d\sigma/dloga = sigma'/(aH), d\sigma'/dloga = -2\sigma' + 3 (a/H) delta (\rho_b + \rho_cdm)-- */
     dy[pba->index_bi_sigma_pht] = y[pba->index_bi_sigma_prime_pht]/a/H;
