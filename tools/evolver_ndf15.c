@@ -1113,11 +1113,9 @@ int fzero_Newton(int (*func)(double *x,
 
   for (k=1;k<=ntrial;k++) {
     /** Compute F(x): */
-    /**printf("x = [%f, %f], delx = [%e, %e]\n",
-       x_inout[0],x_inout[1],delx[0],delx[1]);*/
-    class_call(func(x_inout, x_size, param, F0, error_message),
-               error_message, error_message);
-    /**    printf("F0 = [%f, %f]\n",F0[0],F0[1]);*/
+    printf("Compute F(x): x = [%e, %e, %e, %e], delx = [%e, %e, %e, %e]\n", x_inout[0],x_inout[1],x_inout[2],x_inout[3],delx[0],delx[1],delx[2],delx[3]);
+    class_call(func(x_inout, x_size, param, F0, error_message), error_message, error_message);
+    printf("F0 = [%e, %e, %e, %e]\n",F0[0],F0[1],F0[2],F0[3]);
     *fevals = *fevals + 1;
     errf=0.0; //fvec and Jacobian matrix in fjac.
     for (i=1; i<=x_size; i++)
@@ -1137,17 +1135,19 @@ int fzero_Newton(int (*func)(double *x,
 
     /** Compute the jacobian of F: */
     for (i=1; i<=x_size; i++){
-      if (F0[i-1]<0.0)
+      if (F0[i-1]< 0.0){
         delx[i-1] *= -1;
+      }
       x_inout[i-1] += delx[i-1];
-
-      /**      printf("x = [%f, %f], delx = [%e, %e]\n",
-               x_inout[0],x_inout[1],delx[0],delx[1]);*/
-      class_call(func(x_inout, x_size, param, Fdel, error_message),
-                 error_message, error_message);
-      /**      printf("F = [%f, %f]\n",Fdel[0],Fdel[1]);*/
-      for (j=1; j<=x_size; j++)
+      printf("Compute the jacobian of F: x = [%e, %e, %e, %e], delx = [%e, %e, %e, %e]\n",x_inout[0],x_inout[1],x_inout[2],x_inout[3],delx[0],delx[1],delx[2],delx[3]);
+      class_call(func(x_inout, x_size, param, Fdel, error_message),error_message, error_message);
+      printf("Fdel = [%e, %e, %e, %e]\n",Fdel[0],Fdel[1],Fdel[2],Fdel[3]);
+      for (j=1; j<=x_size; j++){
+        printf("Fdel = %e, F0 = %e, then Fdel-F0 = %e\n",Fdel[j-1],F0[j-1],Fdel[j-1]-F0[j-1]);
         Fjac[j][i] = (Fdel[j-1]-F0[j-1])/delx[i-1];
+      }
+      printf("Fjac col %d: [%e, %e, %e, %e]\n",i,Fjac[1][i],Fjac[2][i],Fjac[3][i],Fjac[4][i]);
+      //Restore x.
       x_inout[i-1] -= delx[i-1];
     }
     *fevals = *fevals + x_size;

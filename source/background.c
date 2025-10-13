@@ -1214,7 +1214,7 @@ int background_indices(
   class_define_index(pba->index_bi_rho_b,_TRUE_,index_bi,1);
 
   /* -> index for cdm density that is coupling with phantom model in Quintom model*/
-  class_define_index(pba->index_bi_rho_cdm,_TRUE_,index_bi,1);
+  class_define_index(pba->index_bi_rho_cdm,pba->has_cdm,index_bi,1);
 
   /* -> index for conformal time in vector of variables to integrate */
   class_define_index(pba->index_bi_tau,_TRUE_,index_bi,1);
