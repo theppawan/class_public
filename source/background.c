@@ -397,7 +397,8 @@ int background_functions(
   /* fluid's time-dependent equation of state parameter */
   double w_fld, dw_over_da, integral_fld;
   /* scalar field quantities */
-  double phi, phi_prime, sigma, sigma_prime;
+  double phi, phi_prime; 
+  double sigma, sigma_prime;
   /* Since we only know a_prime_over_a after we have rho_tot,
      it is not possible to simply sum up p_tot_prime directly.
      Instead we sum up dp_dloga = p_prime/a_prime_over_a. The formula is
@@ -429,34 +430,32 @@ int background_functions(
   rho_r += pvecback[pba->index_bg_rho_g];
 
   /* baryons */
-  if (pba->has_pht == _FALSE_) {
+
+  if (pba->coupled_pht_baryons == _TRUE_) {
+    pvecback[pba->index_bg_rho_b] = pba->Omega0_b * pow(pba->H0,2) / pow(a,3) * exp(pba->delta_pht * (pvecback_B[pba->index_bi_sigma_pht] - pba->sigma0_pht)) ;
+    rho_tot += pvecback[pba->index_bg_rho_b];
+    p_tot += 0;
+    rho_m += pvecback[pba->index_bg_rho_b];
+  } else {
     pvecback[pba->index_bg_rho_b] = pba->Omega0_b * pow(pba->H0,2) / pow(a,3);
     rho_tot += pvecback[pba->index_bg_rho_b];
     p_tot += 0;
     rho_m += pvecback[pba->index_bg_rho_b];
   }
-  else {
-    pvecback[pba->index_bg_rho_b] = pvecback_B[pba->index_bi_rho_b];
-    rho_tot += pvecback[pba->index_bg_rho_b];
-    p_tot += 0;
-    rho_m += pvecback[pba->index_bg_rho_b];
-  }
-
 
   /* cdm */
-  if (pba->has_pht == _FALSE_) {
-    if (pba->has_cdm == _TRUE_) {
-      pvecback[pba->index_bg_rho_cdm] = pba->Omega0_cdm * pow(pba->H0,2) / pow(a,3);
-      rho_tot += pvecback[pba->index_bg_rho_cdm];
-      p_tot += 0.;
-      rho_m += pvecback[pba->index_bg_rho_cdm];
-    }
-    else {
-      pvecback[pba->index_bg_rho_cdm] = pvecback_B[pba->index_bi_rho_cdm];
-      rho_tot += pvecback[pba->index_bg_rho_cdm];
-      p_tot += 0.;
-      rho_m += pvecback[pba->index_bg_rho_cdm];
-    }
+  if (pba->has_cdm == _TRUE_) {
+    if (pba->coupled_pht_cdm == _TRUE_) {
+        pvecback[pba->index_bg_rho_cdm] = pba->Omega0_cdm * pow(pba->H0,2) / pow(a,3) * exp(pba->delta_pht * (pvecback_B[pba->index_bi_sigma_pht] - pba->sigma0_pht));
+        rho_tot += pvecback[pba->index_bg_rho_cdm];
+        p_tot += 0.;
+        rho_m += pvecback[pba->index_bg_rho_cdm];
+      } else {
+        pvecback[pba->index_bg_rho_cdm] = pba->Omega0_cdm * pow(pba->H0,2) / pow(a,3);
+        rho_tot += pvecback[pba->index_bg_rho_cdm];
+        p_tot += 0.;
+        rho_m += pvecback[pba->index_bg_rho_cdm];
+      }
   }
 
   /* idm */
@@ -629,7 +628,7 @@ int background_functions(
   if (pba->has_pht == _TRUE_) {
     /* add p_prime_pht to the total pressure here */
     pvecback[pba->index_bg_p_prime_pht] = pvecback[pba->index_bg_sigma_prime_pht]*
-      (pvecback[pba->index_bg_sigma_prime_pht]*pvecback[pba->index_bg_H]/a - pba->pht_delta*(pvecback[pba->index_bg_rho_cdm] + pvecback[pba->index_bg_rho_b])); // rho_M
+      (pvecback[pba->index_bg_sigma_prime_pht]*pvecback[pba->index_bg_H]/a - pba->delta_pht*(pvecback[pba->index_bg_rho_cdm] + pvecback[pba->index_bg_rho_b])); // rho_M
     pvecback[pba->index_bg_p_tot_prime] += pvecback[pba->index_bg_p_prime_pht];
   }
 
@@ -1035,6 +1034,9 @@ int background_indices(
   pba->has_curvature = _FALSE_;
   pba->has_varconst  = _FALSE_;
 
+  pba->coupled_pht_baryons = _FALSE_;
+  pba->coupled_pht_cdm = _FALSE_;
+
   if (pba->Omega0_cdm != 0.)
     pba->has_cdm = _TRUE_;
 
@@ -1209,12 +1211,6 @@ int background_indices(
      First {B} variables, then {C} variables. */
 
   index_bi=0;
-
-  /* -> index for baryon density that is coupling with phantom model in Quintom model*/
-  class_define_index(pba->index_bi_rho_b,pba->has_pht,index_bi,1);
-
-  /* -> index for cdm density that is coupling with phantom model in Quintom model*/
-  class_define_index(pba->index_bi_rho_cdm,pba->has_pht,index_bi,1);
 
   /* -> index for conformal time in vector of variables to integrate */
   class_define_index(pba->index_bi_tau,_TRUE_,index_bi,1);
@@ -2364,21 +2360,7 @@ int background_initial_conditions(
                pvecback_integration[pba->index_bi_phi_scf]);
   }
   if (pba->has_pht == _TRUE_) {
-    /* -- baryon and cdm to integrate -- */
-    if (pba->index_bi_rho_b >=0) {
-      double rho_b_ini = pba->rho_b_ini;
-      if (rho_b_ini <= 0.0) {
-        rho_b_ini = pba->Omega0_b * pba->H0 * pba->H0 * pow(a, -3);
-      }
-      pvecback_integration[pba->index_bi_rho_b] = rho_b_ini;
-    }
-    if ((pba->has_cdm == _TRUE_) && (pba->index_bi_rho_cdm >=0)) {
-      double rho_cdm_ini = pba->rho_cdm_ini;
-      if (rho_cdm_ini <= 0.0) {
-        rho_cdm_ini = pba->Omega0_cdm * pba->H0 * pba->H0 * pow(a, -3);
-      }
-      pvecback_integration[pba->index_bi_rho_cdm] = rho_cdm_ini;
-    }
+    /* -- No need to integrate baryon or cdm, use equations directly from baryon/cdm fractions
 
     /* -- phantom field -- */
     pvecback_integration[pba->index_bi_sigma_pht] = pba->sigma_ini_pht;
@@ -2776,16 +2758,9 @@ int background_derivs(
 
   /** phantom field coupling with matter */
   if (pba->has_pht == _TRUE_) {
-    /* -- baryon: \f$ d\rho_b/dlna = -3\rho_b + \delta \rho_b \sigma'/ (aH) \f$ --*/
-    dy[pba->index_bi_rho_b] = -3.0*y[pba->index_bi_rho_b] + pba->pht_delta/a/H*y[pba->index_bi_rho_b]*y[pba->index_bi_sigma_prime_pht];
-
-    /* -- cdm: \f$ d\rho_cdm/dlna = -3\rho_cdm + \delta \rho_cdm \sigma'/ (aH) \f$ --*/
-    if (pba->has_cdm == _TRUE_) {
-       dy[pba->index_bi_rho_cdm] = -3.0*y[pba->index_bi_rho_cdm] + pba->pht_delta/a/H*y[pba->index_bi_rho_cdm]*y[pba->index_bi_sigma_prime_pht];
-    }
     /* -- phantom field: d\sigma/dloga = sigma'/(aH), d\sigma'/dloga = -2\sigma' + (a/H) delta (\rho_b + \rho_cdm)-- */
     dy[pba->index_bi_sigma_pht] = y[pba->index_bi_sigma_prime_pht]/a/H;
-    dy[pba->index_bi_sigma_prime_pht] = - 2.0*y[pba->index_bi_sigma_prime_pht] + a/H * pba->pht_delta * (y[pba->index_bi_rho_b]+y[pba->index_bi_rho_cdm]);
+    dy[pba->index_bi_sigma_prime_pht] = - 2.0*y[pba->index_bi_sigma_prime_pht] + a/H * pba->delta_pht * (pba->index_bg_rho_b+pba->index_bg_rho_cdm);
   }
 
   return _SUCCESS_;

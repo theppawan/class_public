@@ -105,7 +105,9 @@ struct background
   double Omega0_lambda;    /**< \f$ \Omega_{0_\Lambda} \f$: cosmological constant */
   double Omega0_fld;       /**< \f$ \Omega_{0 de} \f$: fluid */
   double Omega0_scf;       /**< \f$ \Omega_{0 scf} \f$: scalar field */
-  double Omega0_pht;       /**< \f$ \Omega_{0 pht} \f$: scalar field */
+  double Omega0_pht;       /**< \f$ \Omega_{0 pht} \f$: phantom scalar field */
+  double f_bm;         /**< \f$ f_{bm} \f$: baryon to matter fraction */
+  double delta_pht;      /**< coupling between phantom field and matter */
   short use_ppf; /**< flag switching on PPF perturbation equations instead of true fluid equations for perturbations. It could have been defined inside
                     perturbation structure, but we leave it here in such way to have all fld parameters grouped. */
   double c_gamma_over_c_fld; /**< ppf parameter defined in eq. (16) of 0808.3125 [astro-ph] */
@@ -123,14 +125,14 @@ struct background
   double phi_ini_scf;      /**< \f$ \phi(t_0) \f$: scalar field initial value */
   double phi_prime_ini_scf;/**< \f$ d\phi(t_0)/d\tau \f$: scalar field initial derivative wrt conformal time */
   int scf_parameters_size; /**< size of scf_parameters */
+  short coupled_pht_baryons; /**< flag for coupling between phantom field and baryons */
+  short coupled_pht_cdm; /**< flag for coupling between phantom field and cdm */
 
-  /* Only if integrating baryon & cdm as B-variables */
-  double rho_b_ini;  /**< \f$ \rho_b(t_0) \f$: baryon initial density */
-  double rho_cdm_ini;/**< \f$ \rho_cdm(t_0) \f$: cdm initial density */
   /* ---- */
-  double pht_delta;
-  double sigma_ini_pht;    /**< \f$ \sigma(t_0) \f$: scalar field initial value */
+  double sigma_ini_pht;         /**< \f$ \sigma(t_0) \f$: scalar field initial value */
   double sigma_prime_ini_pht;   /**< \f$ d\sigma(t_0)/d\tau \f$: scalar field initial derivative wrt conformal time */
+  double sigma0_pht;            /**< \f$ \sigma(t_0) \f$: scalar field value at time t0 (today) */
+  double sigma0_prime_pht;     /**< \f$ d\sigma(t_0)/d\tau \f$: scalar field derivative wrt conformal time at time t0 (today) */  
   double varconst_alpha; /**< finestructure constant for varying fundamental constants */
   double varconst_me; /**< electron mass for varying fundamental constants */
   enum varconst_dependence varconst_dep; /**< dependence of the varying fundamental constants as a function of time */
@@ -271,8 +273,6 @@ struct background
 
   //@{
 
-  int index_bi_rho_b;   /**< {B} baryon density due to it is coupling with phantom field in Quintom model */
-  int index_bi_rho_cdm; /**< {B} cdm density due to it is coupling with phantom field in Quintom model */
   int index_bi_rho_dcdm;/**< {B} dcdm density */
   int index_bi_rho_dr;  /**< {B} dr density */
   int index_bi_rho_fld; /**< {B} fluid density */
