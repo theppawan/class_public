@@ -1255,12 +1255,12 @@ int input_get_guess(double *xguess,
       dxdy[index_guess] = -1.;
       break;
     case Omega_b:
-      xguess[index_guess] = pfzw->target_value[index_guess]*pr.a_ini_over_a_today_default;
-      dxdy[index_guess] =  pr.a_ini_over_a_today_default;
+      xguess[index_guess] = pfzw->target_value[index_guess];
+      dxdy[index_guess] = 1.;
       break;
     case Omega_cdm:
-      xguess[index_guess] = pfzw->target_value[index_guess]*pr.a_ini_over_a_today_default;
-      dxdy[index_guess] =  pr.a_ini_over_a_today_default;
+      xguess[index_guess] = pfzw->target_value[index_guess];
+      dxdy[index_guess] = 1.;
       break;
     case omega_ini_dcdm:
       Omega0_dcdmdr = 1./(ba.h*ba.h);

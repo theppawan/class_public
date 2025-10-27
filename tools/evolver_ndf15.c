@@ -1089,6 +1089,8 @@ int fzero_Newton(int (*func)(double *x,
   int has_converged = _FALSE_;
   int funcreturn;
   double toljac = 1e-3;
+  const double max_step_factor = 0.5;
+  const double min_step_scale = 1e-2;
   double *delx;
 
   /** All arrays are indexed as [0, n-1] with the exception of p, indx,
@@ -1113,9 +1115,7 @@ int fzero_Newton(int (*func)(double *x,
 
   for (k=1;k<=ntrial;k++) {
     /** Compute F(x): */
-    printf("Compute F(x): x = [%e, %e, %e, %e], delx = [%e, %e, %e, %e]\n", x_inout[0],x_inout[1],x_inout[2],x_inout[3],delx[0],delx[1],delx[2],delx[3]);
     class_call(func(x_inout, x_size, param, F0, error_message), error_message, error_message);
-    printf("F0 = [%e, %e, %e, %e]\n",F0[0],F0[1],F0[2],F0[3]);
     *fevals = *fevals + 1;
     errf=0.0; //fvec and Jacobian matrix in fjac.
     for (i=1; i<=x_size; i++)
@@ -1135,22 +1135,55 @@ int fzero_Newton(int (*func)(double *x,
 
     /** Compute the jacobian of F: */
     for (i=1; i<=x_size; i++){
-      if (F0[i-1]< 0.0){
-        delx[i-1] *= -1;
+      double delta = delx[i-1];
+      double delta_attempt;
+      double diag_deltaF;
+      double x_backup = x_inout[i-1];
+      int attempt;
+      const int max_attempts = 6;
+      const double growth_factor = 10.0;
+
+      if (delta == 0.0){
+        double scale = MAX(fabs(x_inout[i-1]),1.0);
+        delta = toljac * scale;
       }
-      x_inout[i-1] += delx[i-1];
-      printf("Compute the jacobian of F: x = [%e, %e, %e, %e], delx = [%e, %e, %e, %e]\n",x_inout[0],x_inout[1],x_inout[2],x_inout[3],delx[0],delx[1],delx[2],delx[3]);
-      class_call(func(x_inout, x_size, param, Fdel, error_message),error_message, error_message);
-      printf("Fdel = [%e, %e, %e, %e]\n",Fdel[0],Fdel[1],Fdel[2],Fdel[3]);
+      if (F0[i-1] < 0.0){
+        delta = -fabs(delta);
+      }
+      else if (F0[i-1] > 0.0){
+        delta = fabs(delta);
+      }
+      else{
+        delta = (delta >= 0.0 ? fabs(delta) : -fabs(delta));
+      }
+
+      delta_attempt = delta;
+      diag_deltaF = 0.0;
+      for (attempt=0; attempt<max_attempts; attempt++){
+        x_inout[i-1] = x_backup + delta_attempt;
+        class_call(func(x_inout, x_size, param, Fdel, error_message),error_message, error_message);
+        *fevals = *fevals + 1;
+
+        diag_deltaF = Fdel[i-1] - F0[i-1];
+        if (diag_deltaF != 0.0){
+          break;
+        }
+        delta_attempt *= growth_factor;
+      }
+
+      x_inout[i-1] = x_backup;
+
+      class_test(diag_deltaF == 0.0,
+                 error_message,
+                 "Unable to build shooting Jacobian: perturbing parameter %d did not change the targets. Try increasing 'tol_shooting_deltax' or providing a better initial guess.",
+                 i);
+
       for (j=1; j<=x_size; j++){
-        printf("Fdel = %e, F0 = %e, then Fdel-F0 = %e\n",Fdel[j-1],F0[j-1],Fdel[j-1]-F0[j-1]);
-        Fjac[j][i] = (Fdel[j-1]-F0[j-1])/delx[i-1];
+        Fjac[j][i] = (Fdel[j-1]-F0[j-1])/delta_attempt;
       }
-      printf("Fjac col %d: [%e, %e, %e, %e]\n",i,Fjac[1][i],Fjac[2][i],Fjac[3][i],Fjac[4][i]);
-      //Restore x.
-      x_inout[i-1] -= delx[i-1];
+
+      delx[i-1] = delta_attempt;
     }
-    *fevals = *fevals + x_size;
 
     for (i=1; i<=x_size; i++)
       p[i] = -F0[i-1]; //Right-hand side of linear equations.
@@ -1162,6 +1195,14 @@ int fzero_Newton(int (*func)(double *x,
                "Failure in lubksb. Possibly singular matrix!");
     errx=0.0; //Check root convergence.
     for (i=1; i<=x_size; i++) { //Update solution.
+      double scale = MAX(fabs(x_inout[i-1]), min_step_scale);
+      double step_limit = max_step_factor * scale;
+      if (p[i] > step_limit){
+        p[i] = step_limit;
+      }
+      else if (p[i] < -step_limit){
+        p[i] = -step_limit;
+      }
       errx += fabs(p[i]);
       x_inout[i-1] += p[i];
     }
