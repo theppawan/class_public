@@ -1035,7 +1035,7 @@ int background_indices(
   pba->has_varconst  = _FALSE_;
 
   pba->coupled_pht_baryons = _FALSE_;
-  pba->coupled_pht_cdm = _FALSE_;
+  pba->coupled_pht_cdm = _TRUE_;
 
   if (pba->Omega0_cdm != 0.)
     pba->has_cdm = _TRUE_;
@@ -2760,7 +2760,7 @@ int background_derivs(
   if (pba->has_pht == _TRUE_) {
     /* -- phantom field: d\sigma/dloga = sigma'/(aH), d\sigma'/dloga = -2\sigma' + (a/H) delta (\rho_b + \rho_cdm)-- */
     dy[pba->index_bi_sigma_pht] = y[pba->index_bi_sigma_prime_pht]/a/H;
-    dy[pba->index_bi_sigma_prime_pht] = - 2.0*y[pba->index_bi_sigma_prime_pht] + a/H * pba->delta_pht * (pba->index_bg_rho_b+pba->index_bg_rho_cdm);
+    dy[pba->index_bi_sigma_prime_pht] = - 2.0*y[pba->index_bi_sigma_prime_pht] + a/H * pba->delta_pht * (pvecback[pba->index_bg_rho_b]+pvecback[pba->index_bg_rho_cdm]);
   }
 
   return _SUCCESS_;
