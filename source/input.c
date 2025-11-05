@@ -562,9 +562,9 @@ int input_shooting(struct file_content * pfc,
                                         cs_background,     /* computation stage for target 'Omega_dcdmdr' */
                                         cs_background,     /* computation stage for target 'omega_dcdmdr' */
                                         cs_background,     /* computation stage for target 'Omega_scf' */
-                                        cs_background,     /* computation stage for target 'Omega_m_pht' */
-                                        cs_background,     /* computation stage for target 'Omega_b_pht' */
                                         cs_background,     /* computation stage for target 'Omega_pht' */
+                                        cs_background,     /* computation stage for target 'Omega_cdm_pht' */
+                                        cs_background,     /* computation stage for target 'Omega_b_pht' */
                                         cs_background,     /* computation stage for target 'Omega_ini_dcdm' */
                                         cs_background};    /* computation stage for target 'omega_ini_dcdm' */
 
@@ -886,6 +886,10 @@ int input_needs_shooting_for_target(struct file_content * pfc,
   case omega_dcdmdr:
   case Omega_scf:
   case Omega_pht:
+    if (target_value < 0.0) {
+        *needs_shooting = _FALSE_;
+        break;
+      }
   case Omega_cdm_pht:
   case Omega_b_pht:
   //TODO: Implement for Omega_pht, Omega_cdm_pht, Omega_b_pht
@@ -1259,9 +1263,9 @@ int input_get_guess(double *xguess,
         shoot C_{guess} = a_eq^(1/2) (2\delata +- sqrt(2|\Omega_{\sigma,0}|) ) 
         This fomula set initial condition from RD transition to MD via a_eq
       */
-      double a_eq = ba.Omega0_r / ba.Omega0_m;
+      double a_eq = /* ba.Omega0_r / ba.Omega0_m; */ 3.0e-4;
       class_test(a_eq <= 0.0, errmsg, "a_eq <= 0 in input_get_guess (check Omega0_r and Omega0_m).");
-      xguess[index_guess] = sqrt(a_eq) * (2.0 * ba.delta_pht + sqrt(2*fabs(ba.Omega0_pht)));
+      xguess[index_guess] = sqrt(a_eq) * (2.0 * ba.delta_pht + sqrt(2*ba.Omega0_pht_mag));
       double C_pht_param = xguess[index_guess];
       dxdy[index_guess] = - 1.0 / sqrt(a_eq) * (C_pht_param / sqrt(a_eq) - 2.0 * ba.delta_pht);
       break;
@@ -1513,7 +1517,7 @@ int input_try_unknown_parameters(double * unknown_parameter,
       output[i] = ba.background_table[(ba.bt_size-1)*ba.bg_size+ba.index_bg_rho_scf]/(ba.H0*ba.H0)-ba.Omega0_scf;
       break;
     case Omega_pht:
-      output[i] = ba.Omega0_pht - pfzw->target_value[i];
+      output[i] = ba.Omega0_pht_mag - pfzw->target_value[i];
       break;
     case Omega_cdm_pht:
       output[i] = ba.Omega0_cdm - pfzw->target_value[i];
@@ -2390,8 +2394,8 @@ int input_read_parameters_species(struct file_content * pfc,
   /** - Define local variables */
   int flag1, flag2, flag3, flag4;
   double param1, param2, param3, param4;
-  short flag_pht1, flag_pht2, flag_pht3, flag_pht4;
-  double param_pht1, param_pht2, param_pht3;
+  short flag_Pht, flag_delpht, flag_coup_b_pht;
+  double param_Pht, param_delpht;
   char string1[_ARGUMENT_LENGTH_MAX_];
   int fileentries;
   int N_ncdm=0, n, entries_read;
@@ -3195,6 +3199,52 @@ int input_read_parameters_species(struct file_content * pfc,
     ppr->tight_coupling_approximation = compromise_CLASS;
   }
 
+  /** 7.3) Phantom field coupled to matter 
+   * Omega_0_pht (phantom field), omega_pht (phantom field)
+   * Note that this is a preliminary implementation, the phantom field is not yet
+   * fully functional.
+   */
+  /* Read magnitude of Phantom density */
+  double param_qtm = 0.0;
+  int flag_qtm = _FALSE_;
+
+  class_call(parser_read_double(pfc,"Omega_pht",&param_Pht,&flag_Pht,errmsg),
+             errmsg,
+             errmsg);
+  class_call(parser_read_double(pfc,"delta_pht",&param_delpht,&flag_delpht,errmsg),
+             errmsg,
+             errmsg);
+  class_call(parser_read_string(pfc,"coupled_pht_baryons",&string1,&flag_coup_b_pht,errmsg),
+             errmsg,
+             errmsg);
+  if (flag_delpht == _TRUE_) {
+    pba->delta_pht = param_delpht;
+  } else {
+    pba->delta_pht = 0.0;
+  }
+  if (flag_coup_b_pht == _TRUE_) {
+    if (string_begins_with(string1,'y') || string_begins_with(string1,'yes')){
+      pba->coupled_pht_baryons = _TRUE_;
+    }
+  } 
+  if ((flag_Pht == _TRUE_) && (param_Pht >= 0.0)) {
+    class_test((flag_delpht == _FALSE_),
+               errmsg,
+               "'delta_pht' must be specified when using the phantom field.");
+    pba->Omega0_pht_mag = param_Pht;
+    pba->Omega0_pht = - fabs(pba->Omega0_pht_mag); // phantom field has negative density
+    pba->delta_pht = param_delpht;
+    pba->sigma0_prime_pht = sqrt(2.0 * pba->H0*pba->H0 * fabs(pba->Omega0_pht)); // H0^2 = rho_crit0 (k^2=1)
+    pba->has_pht = _TRUE_;
+  } 
+  else if ((flag_Pht == _TRUE_) && (param_Pht < 0.0)) {
+    /* Interpret negative input as "unspecified" (shoot/fill from budget) */
+    pba->has_pht = _TRUE_;
+  } 
+  class_test(pba->has_pht == _TRUE_ && pba->Omega0_pht > 0.0,
+             errmsg,
+             "The phantom energy density must has positive value in magnitude");
+
   /* ** ADDITIONAL SPECIES ** */
 
 
@@ -3241,6 +3291,7 @@ int input_read_parameters_species(struct file_content * pfc,
       Omega_0_lambda (cosmological constant), Omega0_fld (dark energy
       fluid), Omega0_scf (scalar field) */
   /* Read */
+  //TODO: add check that Omega0_pht and sigma0_prime_pht are consistent
   class_call(parser_read_double(pfc,"Omega_Lambda",&param1,&flag1,errmsg),
              errmsg,
              errmsg);
@@ -3251,67 +3302,38 @@ int input_read_parameters_species(struct file_content * pfc,
              errmsg,
              errmsg);
   /* Test */
+  int lambda_fld_spec = ((flag1 == _TRUE_) && (flag2 == _TRUE_));
+  int scf_spec = ((flag3 == _FALSE_) || (param3 >= 0.));
+  /* define unspecified flags for quintessence and phantom field */
+  int scf_unspec = ((flag3 == _TRUE_) && (param3 < 0.));
+  int pht_spec = ((flag_Pht == _FALSE_) || (param_Pht >= 0.));
+  int pht_unspec = ((flag_Pht == _TRUE_) && (param_Pht < 0.));
+  
+  /* If all DE components are specified */
+  class_test(lambda_fld_spec && scf_spec && ((pba->has_pht == _FALSE_) || (param_Pht >= 0.)),
+             errmsg,
+             "'Omega_Lambda' or 'Omega_fld' or 'Omega_scf' must be left unspecified, except if 'Omega_pht' is set and < 0.");
+  /* If Lambda and fluid are not specified, scf specified, pht unspecified */
+  class_test(!lambda_fld_spec && scf_spec && pht_unspec,
+             errmsg,
+             "You have entered 'Omega_pht' < 0 and 'Omega_scf >=0', so you have to specify both 'Omega_lambda' and 'Omega_fld'.");
+  /* If Lambda and fluid are not specified, scf unspecified, pht specified */
+  class_test(!lambda_fld_spec && scf_unspec && pht_spec,
+             errmsg,
+             "You have entered 'Omega_pht' >= 0 and 'Omega_scf < 0', so you have to specify both 'Omega_lambda' and 'Omega_fld'.");
+  /* If all DE components are unspecified */
+  class_test(!lambda_fld_spec && scf_unspec && pht_unspec,
+             errmsg,
+             "You have entered 'Omega_pht' < 0 and 'Omega_scf < 0', so you have to specify both 'Omega_lambda' and 'Omega_fld'.");
+
+  /* Old tests
   class_test((flag1 == _TRUE_) && (flag2 == _TRUE_) && ((flag3 == _FALSE_) || (param3 >= 0.)),
              errmsg,
              "'Omega_Lambda' or 'Omega_fld' must be left unspecified, except if 'Omega_scf' is set and < 0.");
   class_test(((flag1 == _FALSE_)||(flag2 == _FALSE_)) && ((flag3 == _TRUE_) && (param3 < 0.)),
              errmsg,
              "You have entered 'Omega_scf' < 0 , so you have to specify both 'Omega_lambda' and 'Omega_fld'.");
-
-  /** 9) Phantom field 
-   * Omega_0_pht (phantom field), omega_pht (phantom field)
-   * Note that this is a preliminary implementation, the phantom field is not yet
-   * fully functional.
-  /* Read */
-  class_call(parser_read_double(pfc,"Omega0_pht",&param_pht1,&flag_pht1,errmsg),
-             errmsg,
-             errmsg);
-  class_call(parser_read_double(pfc,"omega_pht",&param_pht2,&flag_pht2,errmsg),
-             errmsg,
-             errmsg);
-  class_call(parser_read_double(pfc,"delta_pht",&param_pht3,&flag_pht3,errmsg),
-             errmsg,
-             errmsg);
-  class_call(parser_read_string(pfc,"coupled_pht_baryons",&string1,&flag_pht4,errmsg),
-             errmsg,
-             errmsg);
-  if (flag_pht4 == _TRUE_) {
-    if (string_begins_with(string1,'y') || string_begins_with(string1,'Y') || string_begins_with(string1,'yes') || string_begins_with(string1,'YES')){
-      pba->coupled_pht_baryons = _TRUE_;
-    }
-  } 
-  /* Test */
-  if (flag_pht1 == _TRUE_ || flag_pht2 == _TRUE_) {
-    class_test((flag_pht1 && flag_pht2),
-              errmsg,
-              "You can only enter one of 'Omega0_pht' or 'omega_pht'.");
-    pba->Omega0_pht = flag_pht1 ? param_pht1 : param_pht2/pba->h/pba->h;
-
-    class_test(pba->Omega0_pht < 0.0, 
-              errmsg, 
-              "Omega0_pht must be >=0 in magnitude; remember phantom has negative rho.");
-      
-    class_test((flag_pht3 == _FALSE_),
-              errmsg,
-              "'delta_pht' must be specified when using the phantom field.");
-    pba->delta_pht = param_pht3;
-    pba->sigma0_prime_pht = sqrt(2.0 * pba->H0*pba->H0 * 3.0 * pba->Omega0_pht); // 3H0^2 = rho_crit0 (k^2=1)
-    pba->has_pht = _TRUE_;
-  }
-
-  
-   
-  // //TODO: add check that Omega0_pht and sigma0_prime_pht are consistent
-  // /* delta_pht */
-  // class_call(parser_read_double(pfc,"delta_pht",&param4,&flag4,errmsg),
-  //            errmsg,
-  //            errmsg);
-  // if (flag4 == _TRUE_) {
-  //   pba->delta_pht = param4;
-  // } else {
-  //   pba->delta_pht = -1; // unspecified
-  // }
-
+  */
 
   /* Complete set of parameters
      Case of (flag3 == _FALSE_) || (param3 >= 0.) means that either we have not
@@ -3345,6 +3367,36 @@ int input_read_parameters_species(struct file_content * pfc,
     pba->Omega0_scf = param3;
     Omega_tot += pba->Omega0_scf;
   }
+  if ((flag_Pht == _TRUE_) && (param_Pht >= 0.)){
+    pba->Omega0_pht = - fabs(pba->Omega0_pht_mag); // phantom field has negative energy density
+    Omega_tot += pba->Omega0_pht;
+  }
+
+  // /** Case 1: Both scf and pht are specified */
+  // if ((flag3 == _TRUE_) && (param3 >= 0.) && (flag_Pht == _TRUE_) && (param_Pht >= 0.)) {
+  //   pba->Omega0_scf = param3;
+  //   pba->Omega0_pht = param_Pht;
+  //   param_qtm = pba->Omega0_scf + pba->Omega0_pht;
+  //   /* Test */
+  //   class_test(param_qtm + Omega_fixed + pba->Omega0_k > 1.,
+  //             errmsg, "Inconsistent Omega_scf + Omega_pht with fixed species.");
+  //   Omega_tot += param_qtm;
+  // }
+  // /** Case 2: scf unspecified, pht is fixed */
+  // else if (scf_unspec && (flag_Pht == _TRUE_) && (param_Pht >= 0.)) {
+  //   pba->Omega0_pht = param_Pht;
+  //   pba->Omega0_scf = 1. - pba->Omega0_k - Omega_tot - pba->Omega0_pht;
+
+  //   Omega_tot = Omega_fixed + pba->Omega0_pht;
+  //   if (input_verbose > 0){
+  //     printf(" -> matched budget equations by adjusting Omega_scf = %g\n",pba->Omega0_scf);
+  //   }
+  // }
+
+  // if (flag_Pht == _TRUE_){
+  //   pba->Omega0_pht = param_Pht;
+  //   Omega_tot -= pba->Omega0_pht; //phantom field has negative energy density
+  // }
   // if ((flag4 == _TRUE_) && (param4 < 0.)){
   //   pba->Omega0_pht = param4;
   //   Omega_tot += pba->Omega0_pht;
@@ -3371,6 +3423,18 @@ int input_read_parameters_species(struct file_content * pfc,
     pba->Omega0_scf = 1. - pba->Omega0_k - Omega_tot;
     if (input_verbose > 0){
       printf(" -> matched budget equations by adjusting Omega_scf = %g\n",pba->Omega0_scf);
+    }
+  }
+  else if ((flag_Pht == _TRUE_) && (param_Pht < 0.)){
+    /* Fill up (substract) with phantom field */
+    pba->Omega0_pht = -(1. - pba->Omega0_k - Omega_tot);
+    pba->Omega0_pht_mag = fabs(pba->Omega0_pht);
+    pba->sigma0_prime_pht = sqrt(2.0 * pba->H0*pba->H0 * pba->Omega0_pht_mag);
+    pba->has_pht = _TRUE_;
+    static int printed_pht_budget = 0;
+    if (input_verbose > 0){
+      printf(" -> matched budget equations by adjusting Omega_pht = %g\n", pba->Omega0_pht);
+      printed_pht_budget = 1;
     }
   }
 

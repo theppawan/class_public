@@ -106,6 +106,7 @@ struct background
   double Omega0_fld;       /**< \f$ \Omega_{0 de} \f$: fluid */
   double Omega0_scf;       /**< \f$ \Omega_{0 scf} \f$: scalar field */
   double Omega0_pht;       /**< \f$ \Omega_{0 pht} \f$: phantom scalar field */
+  double Omega0_pht_mag;    /**< magnitude of \f$ \Omega_{0 pht} \f$: phantom scalar field */
   double f_bm;         /**< \f$ f_{bm} \f$: baryon to matter fraction */
   double delta_pht;      /**< coupling between phantom field and matter */
   short use_ppf; /**< flag switching on PPF perturbation equations instead of true fluid equations for perturbations. It could have been defined inside

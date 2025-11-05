@@ -505,6 +505,7 @@ int background_functions(
     //printf(" a= %e, Omega_scf = %f, \n ",a, pvecback[pba->index_bg_rho_scf]/rho_tot );
   }
 
+  /* Phantom field */
   if (pba->has_pht == _TRUE_) {
     sigma = pvecback_B[pba->index_bi_sigma_pht];
     sigma_prime = pvecback_B[pba->index_bi_sigma_prime_pht];
@@ -2149,6 +2150,18 @@ int background_solve(
         printf("%.3f, ",pba->scf_parameters[index_scf]);
       }
       printf("%.3f]\n",pba->scf_parameters[pba->scf_parameters_size-1]);
+    }
+    if (pba->has_pht == _TRUE_) {
+      printf("    Phantom field details:\n");
+      printf("     -> Omega_pht = %g, wished %g\n",
+             pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_rho_pht]/pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_rho_crit], pba->Omega0_pht);
+      if (pba->has_lambda == _TRUE_) {
+        printf("     -> Omega_Lambda = %g, wished %g\n",
+               pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_rho_lambda]/pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_rho_crit], pba->Omega0_lambda);
+      }
+      printf("     -> pht parameters: [delta, sigma0_pht] = \n");
+      printf("                    [");
+      printf("%.3f, %.3f]\n",pba->delta_pht, pba->sigma0_pht);
     }
   }
 
