@@ -547,7 +547,7 @@ int input_shooting(struct file_content * pfc,
                                         "Omega_ini_dcdm",           /* unknown param for target 'Omega_dcdmd' */
                                         "omega_ini_dcdm",           /* unknown param for target 'omega_dcdmdr' */
                                         "scf_shooting_parameter",   /* unknown param for target 'Omega_scf' */
-                                        "C_pht_parameter",          /* unknown param for target 'Omega_pht' */
+                                        "sigma_prime_pht",          /* unknown param for target 'Omega_pht' */
                                         "K_cdm_pht",                /* unknown param for target 'Omega_cdm_pht' */
                                         "K_b_pht",                  /* unknown param for target 'Omega_b_pht' */
                                         "Omega_dcdmdr",             /* unknown param for target 'Omega_ini_dcdm' */
@@ -890,6 +890,7 @@ int input_needs_shooting_for_target(struct file_content * pfc,
         *needs_shooting = _FALSE_;
         break;
       }
+    break;
   case Omega_cdm_pht:
   case Omega_b_pht:
   //TODO: Implement for Omega_pht, Omega_cdm_pht, Omega_b_pht
@@ -1263,11 +1264,11 @@ int input_get_guess(double *xguess,
         shoot C_{guess} = a_eq^(1/2) (2\delata +- sqrt(2|\Omega_{\sigma,0}|) ) 
         This fomula set initial condition from RD transition to MD via a_eq
       */
-      double a_eq = /* ba.Omega0_r / ba.Omega0_m; */ 3.0e-4;
-      class_test(a_eq <= 0.0, errmsg, "a_eq <= 0 in input_get_guess (check Omega0_r and Omega0_m).");
-      xguess[index_guess] = sqrt(a_eq) * (2.0 * ba.delta_pht + sqrt(2*ba.Omega0_pht_mag));
-      double C_pht_param = xguess[index_guess];
-      dxdy[index_guess] = - 1.0 / sqrt(a_eq) * (C_pht_param / sqrt(a_eq) - 2.0 * ba.delta_pht);
+      // double a_eq = /* ba.Omega0_r / ba.Omega0_m; */ 3.0e-4;
+      // class_test(a_eq <= 0.0, errmsg, "a_eq <= 0 in input_get_guess (check Omega0_r and Omega0_m).");
+      xguess[index_guess] = ba.H0 * sqrt(2.0*fabs(ba.Omega0_pht_mag)); /*sqrt(a_eq) * (2.0 * ba.delta_pht + sqrt(2*ba.Omega0_pht_mag));*/
+      // double sigmax = xguess[index_guess];
+      dxdy[index_guess] = 1.0/ba.H0/ba.H0/2.0; /*- 1.0 / sqrt(a_eq) * (C_pht_param / sqrt(a_eq) - 2.0 * ba.delta_pht);*/
       break;
     case Omega_cdm_pht:
       /* xguess = delta = sqrt(8 Omega_sigma0) / Omega_m0. This guess assuming sigma'' approx 0 */
@@ -2394,8 +2395,7 @@ int input_read_parameters_species(struct file_content * pfc,
   /** - Define local variables */
   int flag1, flag2, flag3, flag4;
   double param1, param2, param3, param4;
-  short flag_Pht, flag_delpht, flag_coup_b_pht;
-  double param_Pht, param_delpht;
+  short flag_coup_b_pht;
   char string1[_ARGUMENT_LENGTH_MAX_];
   int fileentries;
   int N_ncdm=0, n, entries_read;
@@ -3205,45 +3205,87 @@ int input_read_parameters_species(struct file_content * pfc,
    * fully functional.
    */
   /* Read magnitude of Phantom density */
-  double param_qtm = 0.0;
-  int flag_qtm = _FALSE_;
+  // double param_qtm = 0.0;
+  // int flag_qtm = _FALSE_;
+  double param_Omega_pht = 0.0, param_sigmap_pht = 0.0, param_delta_pht = 0.0;
+  short  flag_Omega_pht = _FALSE_, flag_sigmap_pht = _FALSE_, flag_delta_pht = _FALSE_;
 
-  class_call(parser_read_double(pfc,"Omega_pht",&param_Pht,&flag_Pht,errmsg),
+  class_call(parser_read_double(pfc,"Omega_pht",&param_Omega_pht,&flag_Omega_pht,errmsg),
              errmsg,
              errmsg);
-  class_call(parser_read_double(pfc,"delta_pht",&param_delpht,&flag_delpht,errmsg),
+  class_call(parser_read_double(pfc,"sigma_prime_pht",&param_sigmap_pht,&flag_sigmap_pht,errmsg), errmsg, errmsg);
+    if (flag_sigmap_pht == _FALSE_) {
+      class_call(parser_read_double(pfc,"sigma0_prime_pht",&param_sigmap_pht,&flag_sigmap_pht,errmsg), errmsg, errmsg);
+    }
+  class_call(parser_read_double(pfc,"delta_pht",&param_delta_pht,&flag_delta_pht,errmsg),
              errmsg,
              errmsg);
   class_call(parser_read_string(pfc,"coupled_pht_baryons",&string1,&flag_coup_b_pht,errmsg),
              errmsg,
              errmsg);
-  if (flag_delpht == _TRUE_) {
-    pba->delta_pht = param_delpht;
-  } else {
-    pba->delta_pht = 0.0;
-  }
+  /* after reading the three keys */
+  int pht_shooting = (flag_Omega_pht == _TRUE_) && (param_Omega_pht >= 0.0);
+  int pht_fill     = ((flag_Omega_pht == _TRUE_) && (param_Omega_pht < 0.0))
+                || ((flag_Omega_pht == _FALSE_) && (flag_sigmap_pht == _TRUE_));
+  int pht_present  = pht_shooting || pht_fill;
+
   if (flag_coup_b_pht == _TRUE_) {
     if (string_begins_with(string1,'y') || string_begins_with(string1,'yes')){
       pba->coupled_pht_baryons = _TRUE_;
     }
   } 
-  if ((flag_Pht == _TRUE_) && (param_Pht >= 0.0)) {
-    class_test((flag_delpht == _FALSE_),
-               errmsg,
-               "'delta_pht' must be specified when using the phantom field.");
-    pba->Omega0_pht_mag = param_Pht;
-    pba->Omega0_pht = - fabs(pba->Omega0_pht_mag); // phantom field has negative density
-    pba->delta_pht = param_delpht;
-    pba->sigma0_prime_pht = sqrt(2.0 * pba->H0*pba->H0 * fabs(pba->Omega0_pht)); // H0^2 = rho_crit0 (k^2=1)
+  if (flag_Omega_pht == _TRUE_ && param_Omega_pht >= 0.0) {
+    /* ---- SHOOTING BRANCH ----
+     Target = Omega_pht (magnitude). Unknown = sigma_prime_pht (varied by shooter).
+     User must NOT also provide sigma_prime_pht.
+    */
+    /* NEW (shooting: allow sigma' to be present; it's the shooter’s trial) */
+    // if (pht_shooting) {
     pba->has_pht = _TRUE_;
-  } 
-  else if ((flag_Pht == _TRUE_) && (param_Pht < 0.0)) {
-    /* Interpret negative input as "unspecified" (shoot/fill from budget) */
+    /* If sigma' is present (either user mistakenly set it or shooter injected it),
+    read it and immediately map to Omega0_pht for a consistent budget in this parse. */
+    if (flag_sigmap_pht == _TRUE_) {
+      pba->sigma0_prime_pht = param_sigmap_pht;
+      double Om_mag = (pba->sigma0_prime_pht * pba->sigma0_prime_pht) / (2.0 * pba->H0 * pba->H0);
+      pba->Omega0_pht     = -Om_mag;
+      pba->Omega0_pht_mag =  Om_mag;
+    }
+    // }
+    // class_test(flag_sigmap_pht == _TRUE_,
+    //           errmsg,
+    //           "Provide either Omega_pht (>=0) for shooting OR sigma_prime_pht for fill-mode, not both.");
+
+    pba->Omega0_pht_mag = param_Omega_pht;
+    pba->Omega0_pht = - fabs(pba->Omega0_pht_mag);
+    // pba->sigma0_prime_pht = sqrt(2.0 * pba->H0*pba->H0 * fabs(pba->Omega0_pht)); // H0^2 = rho_crit0
     pba->has_pht = _TRUE_;
-  } 
-  class_test(pba->has_pht == _TRUE_ && pba->Omega0_pht > 0.0,
-             errmsg,
-             "The phantom energy density must has positive value in magnitude");
+  }
+  if ((flag_Omega_pht == _TRUE_ && param_Omega_pht < 0.0) || (flag_Omega_pht == _FALSE_ && flag_sigmap_pht == _TRUE_)) {
+    /* ---- FILL BRANCH ----
+     Either Omega_pht<0 (explicit fill) OR Omega_pht omitted but sigma_prime_pht provided.
+     Require sigma_prime_pht.
+    */
+    class_test(flag_sigmap_pht == _FALSE_,
+              errmsg,
+              "In fill-mode (Omega_pht<0 or omitted) you must provide sigma_prime_pht (or sigma0_prime_pht).");
+    pba->has_pht = _TRUE_;
+    pba->sigma0_prime_pht = param_sigmap_pht;
+    /* Omega_pht_mag = (sigma0'^2) / (2 H0^2) */
+    double Om_mag = (pba->sigma0_prime_pht * pba->sigma0_prime_pht) / (2.0 * pba->H0 * pba->H0);
+    pba->Omega0_pht      = -Om_mag;
+    pba->Omega0_pht_mag  =  Om_mag;
+    
+  } else {
+    /* No phantom sector specified */
+    /* Only complain about delta_pht if the phantom sector truly isn't selected */
+    class_test((pht_present == 0) && (flag_delta_pht == _TRUE_),
+              errmsg,
+              "delta_pht is meaningless without phantom: set Omega_pht (>=0 shooting, <0 fill) or sigma_prime_pht.");
+  }
+  /* If present, store the coupling delta_pht (optional) */
+  if (pba->has_pht == _TRUE_ && flag_delta_pht == _TRUE_) {
+    pba->delta_pht = param_delta_pht;
+  }
 
   /* ** ADDITIONAL SPECIES ** */
 
@@ -3276,13 +3318,23 @@ int input_read_parameters_species(struct file_content * pfc,
      negative; correct for this: */
   if (pba->Omega0_cdm < 0.)
     pba->Omega0_cdm = 0.;
-  if (pba->f_bm < 0. || pba->f_bm > 1.) {
-    class_stop(errmsg,"The fraction of baryons in matter must be between 0 and 1, you asked for f_bm=%e",pba->f_bm);
-  }
+  
 
   /* avoid Omega0_cdm exactly zero in synchronous gauge */
   if ((ppt->gauge == synchronous) && (pba->Omega0_cdm < ppr->Omega0_cdm_min_synchronous)) {
     pba->Omega0_cdm = ppr->Omega0_cdm_min_synchronous;
+  }
+  /* Derive f_bm from Omegas if user did not set a valid value earlier */
+  double denom = pba->Omega0_b + pba->Omega0_cdm;
+  if (denom > 0.0) {
+    /* If f_bm was not provided (or is out of range), compute it */
+    if (!(pba->f_bm > 0.0 && pba->f_bm < 1.0)) {
+      pba->f_bm = pba->Omega0_b / denom;
+    }
+    /* Validate */
+    class_test((pba->f_bm < 0.0) || (pba->f_bm > 1.0),
+               errmsg,
+               "The fraction of baryons in matter must be between 0 and 1, you asked for f_bm=%e",pba->f_bm);
   }
 
   /* At this point all the species should be set, and used for the budget equation below */
@@ -3306,11 +3358,11 @@ int input_read_parameters_species(struct file_content * pfc,
   int scf_spec = ((flag3 == _FALSE_) || (param3 >= 0.));
   /* define unspecified flags for quintessence and phantom field */
   int scf_unspec = ((flag3 == _TRUE_) && (param3 < 0.));
-  int pht_spec = ((flag_Pht == _FALSE_) || (param_Pht >= 0.));
-  int pht_unspec = ((flag_Pht == _TRUE_) && (param_Pht < 0.));
+  int pht_spec = ((flag_Omega_pht == _TRUE_) && (param_Omega_pht >= 0.));
+  int pht_unspec = ((flag_Omega_pht == _TRUE_) && (param_Omega_pht < 0.));
   
   /* If all DE components are specified */
-  class_test(lambda_fld_spec && scf_spec && ((pba->has_pht == _FALSE_) || (param_Pht >= 0.)),
+  class_test(lambda_fld_spec && scf_spec && ((pba->has_pht == _FALSE_) || (param_Omega_pht >= 0.)),
              errmsg,
              "'Omega_Lambda' or 'Omega_fld' or 'Omega_scf' must be left unspecified, except if 'Omega_pht' is set and < 0.");
   /* If Lambda and fluid are not specified, scf specified, pht unspecified */
@@ -3367,42 +3419,15 @@ int input_read_parameters_species(struct file_content * pfc,
     pba->Omega0_scf = param3;
     Omega_tot += pba->Omega0_scf;
   }
-  if ((flag_Pht == _TRUE_) && (param_Pht >= 0.)){
-    pba->Omega0_pht = - fabs(pba->Omega0_pht_mag); // phantom field has negative energy density
+  if (pba->has_pht == _TRUE_) {
+    // pba->Omega0_pht = - fabs(pba->Omega0_pht_mag); // phantom field has negative energy density
+    /* Shooting: Omega0_pht was set from the trial sigma' during parsing of this shot */
+    double Om_mag = (pba->sigma0_prime_pht * pba->sigma0_prime_pht) / (2.0*pba->H0*pba->H0);
+    pba->Omega0_pht     = -Om_mag;
+    pba->Omega0_pht_mag =  Om_mag;
     Omega_tot += pba->Omega0_pht;
-  }
+  } 
 
-  // /** Case 1: Both scf and pht are specified */
-  // if ((flag3 == _TRUE_) && (param3 >= 0.) && (flag_Pht == _TRUE_) && (param_Pht >= 0.)) {
-  //   pba->Omega0_scf = param3;
-  //   pba->Omega0_pht = param_Pht;
-  //   param_qtm = pba->Omega0_scf + pba->Omega0_pht;
-  //   /* Test */
-  //   class_test(param_qtm + Omega_fixed + pba->Omega0_k > 1.,
-  //             errmsg, "Inconsistent Omega_scf + Omega_pht with fixed species.");
-  //   Omega_tot += param_qtm;
-  // }
-  // /** Case 2: scf unspecified, pht is fixed */
-  // else if (scf_unspec && (flag_Pht == _TRUE_) && (param_Pht >= 0.)) {
-  //   pba->Omega0_pht = param_Pht;
-  //   pba->Omega0_scf = 1. - pba->Omega0_k - Omega_tot - pba->Omega0_pht;
-
-  //   Omega_tot = Omega_fixed + pba->Omega0_pht;
-  //   if (input_verbose > 0){
-  //     printf(" -> matched budget equations by adjusting Omega_scf = %g\n",pba->Omega0_scf);
-  //   }
-  // }
-
-  // if (flag_Pht == _TRUE_){
-  //   pba->Omega0_pht = param_Pht;
-  //   Omega_tot -= pba->Omega0_pht; //phantom field has negative energy density
-  // }
-  // if ((flag4 == _TRUE_) && (param4 < 0.)){
-  //   pba->Omega0_pht = param4;
-  //   Omega_tot += pba->Omega0_pht;
-  // }
-
-  //TODO: add Omega0_sigma when phantom field is implemented
   /* Step 2 */
   if (flag1 == _FALSE_) {
     /* Fill with Lambda */
@@ -3425,11 +3450,11 @@ int input_read_parameters_species(struct file_content * pfc,
       printf(" -> matched budget equations by adjusting Omega_scf = %g\n",pba->Omega0_scf);
     }
   }
-  else if ((flag_Pht == _TRUE_) && (param_Pht < 0.)){
+  else if ((flag_Omega_pht == _TRUE_) && (param_Omega_pht < 0.)){
     /* Fill up (substract) with phantom field */
     pba->Omega0_pht = -(1. - pba->Omega0_k - Omega_tot);
     pba->Omega0_pht_mag = fabs(pba->Omega0_pht);
-    pba->sigma0_prime_pht = sqrt(2.0 * pba->H0*pba->H0 * pba->Omega0_pht_mag);
+    // pba->sigma0_prime_pht = pba->H0 * sqrt(2.0 * pba->Omega0_pht_mag);
     pba->has_pht = _TRUE_;
     static int printed_pht_budget = 0;
     if (input_verbose > 0){
@@ -6120,6 +6145,7 @@ int input_default_params(struct background *pba,
   pba->scf_tuning_index = 0;
   /** 9.c) phantom field parameters */ // TODO: to be correctly implemented
   pba->sigma0_pht = 0.;
+  pba->sigma0_prime_pht = 0.;
   pba->sigma_ini_pht = 1.;
   pba->sigma_prime_ini_pht = 1.;
 

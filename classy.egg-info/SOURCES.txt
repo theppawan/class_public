@@ -98,9 +98,12 @@ setup.py
 ./python/README
 ./python/cclassy.pxd
 ./python/classy.cpp
+./python/classy.cpython-312-darwin.so
+./python/classy.cpython-314-darwin.so
 ./python/classy.pyx
 ./python/extract_errors.py
 ./python/interface_generator.py
+./python/setup.ipynb
 ./python/setup.py
 ./python/test_class.py
 ./source/background.c
@@ -222,9 +225,12 @@ main/class.c
 python/README
 python/cclassy.pxd
 python/classy.cpp
+python/classy.cpython-312-darwin.so
+python/classy.cpython-314-darwin.so
 python/classy.pyx
 python/extract_errors.py
 python/interface_generator.py
+python/setup.ipynb
 python/setup.py
 python/test_class.py
 source/background.c
